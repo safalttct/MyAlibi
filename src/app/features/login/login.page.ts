@@ -18,7 +18,7 @@ type Mode = 'signin' | 'signup';
     <div class="flex min-h-dvh items-center justify-center bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
       @if (!configured) {
         <section class="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
-          <div class="mb-5 flex justify-center"><app-logo size="lg" /></div>
+          <div class="mb-5 flex justify-center"><app-logo class="[&_img]:object-center" size="lg" /></div>
           <h1 class="text-lg font-semibold tracking-tight text-foreground">Supabase not configured</h1>
           <p class="mt-2 text-sm text-muted">
             Set <code class="rounded bg-elevated px-1 py-0.5 text-xs">NG_APP_SUPABASE_URL</code> and
@@ -32,8 +32,8 @@ type Mode = 'signin' | 'signup';
         </section>
       } @else {
         <section class="w-full max-w-sm">
-          <div class="mb-7 flex flex-col items-center gap-3 text-center">
-            <app-logo size="lg" />
+          <div class="mb-8 flex flex-col items-center gap-3 text-center">
+            <app-logo class="[&_img]:object-center" size="lg" />
             <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
           </div>
 

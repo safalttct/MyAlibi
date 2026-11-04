@@ -50,8 +50,8 @@ interface NavItem {
         class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-surface md:flex"
         aria-label="Application"
       >
-        <div class="flex h-16 items-center px-5">
-          <a routerLink="/dashboard" class="outline-none">
+        <div class="flex h-[4.25rem] items-center px-5">
+          <a routerLink="/dashboard" class="outline-none" aria-label="MyAlibi home">
             <app-logo size="md" />
           </a>
         </div>
@@ -120,8 +120,8 @@ interface NavItem {
       <header
         class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-4 backdrop-blur-md md:hidden"
       >
-        <a routerLink="/dashboard" class="outline-none">
-          <app-logo size="sm" />
+        <a routerLink="/dashboard" class="outline-none" aria-label="MyAlibi home">
+          <app-logo size="md" />
         </a>
         <div class="flex items-center gap-0.5">
           <a

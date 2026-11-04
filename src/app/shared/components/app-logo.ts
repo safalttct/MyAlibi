@@ -7,7 +7,7 @@ export type LogoSize = 'sm' | 'md' | 'lg';
   selector: 'app-logo',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    class: 'inline-flex items-center',
+    class: 'inline-flex max-w-full items-center',
     '[attr.aria-label]': '"MyAlibi"',
   },
   template: `
@@ -15,8 +15,8 @@ export type LogoSize = 'sm' | 'md' | 'lg';
       [src]="src()"
       alt="MyAlibi"
       [class]="imgClass()"
-      width="180"
-      height="40"
+      width="200"
+      height="48"
       decoding="async"
     />
   `,
@@ -27,11 +27,10 @@ export class AppLogo {
   /** Override automatic theme-based logo selection. */
   readonly forceTheme = input<'dark' | 'light' | null>(null);
   readonly size = input<LogoSize>('md');
-  readonly markOnly = input(false);
 
   protected readonly src = computed(() => {
     const mode = this.forceTheme() ?? this.theme.theme();
-    // Official assets: light logo on light UI, dark logo on dark UI.
+    // Filenames mean “for this UI theme”: dark UI uses lavender mark, light UI uses deep purple.
     return mode === 'light'
       ? '/assets/branding/myalibi-light.png'
       : '/assets/branding/myalibi-dark.png';
@@ -39,10 +38,10 @@ export class AppLogo {
 
   protected readonly imgClass = computed(() => {
     const sizes: Record<LogoSize, string> = {
-      sm: 'h-7 w-auto',
-      md: 'h-8 w-auto sm:h-9',
-      lg: 'h-10 w-auto sm:h-11',
+      sm: 'h-9 w-auto',
+      md: 'h-10 w-auto',
+      lg: 'h-12 w-auto sm:h-14',
     };
-    return `${sizes[this.size()]} max-w-[160px] object-contain object-left select-none`;
+    return `${sizes[this.size()]} max-w-[200px] object-contain object-left select-none`;
   });
 }
