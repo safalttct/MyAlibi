@@ -47,7 +47,7 @@ interface NavItem {
     <div class="min-h-dvh bg-background text-foreground">
       <!-- Desktop sidebar -->
       <aside
-        class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-sidebar md:flex"
+        class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-surface md:flex"
         aria-label="Application"
       >
         <div class="flex h-16 items-center px-5">
@@ -60,11 +60,11 @@ interface NavItem {
           @for (item of primaryNav; track item.path) {
             <a
               [routerLink]="item.path"
-              routerLinkActive="bg-accent-soft text-accent"
+              routerLinkActive="bg-primary-soft text-primary"
               [routerLinkActiveOptions]="item.path === '/settings' ? { exact: false } : { exact: true }"
-              class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-foreground"
+              class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
             >
-              <span class="text-current opacity-80 group-[.bg-accent-soft]:opacity-100">
+              <span class="text-current opacity-80 group-[.bg-primary-soft]:opacity-100">
                 @switch (item.icon) {
                   @case ('dashboard') { <svg lucideLayoutDashboard size="18" strokeWidth="1.75"></svg> }
                   @case ('records') { <svg lucideListChecks size="18" strokeWidth="1.75"></svg> }
@@ -80,21 +80,21 @@ interface NavItem {
         </nav>
 
         <div class="space-y-2 border-t border-border p-3">
-          <div class="flex items-center gap-2 rounded-lg bg-elevated/60 px-2.5 py-2">
-            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <div class="flex items-center gap-2 rounded-lg bg-primary-soft/80 px-2.5 py-2">
+            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
               <svg lucideUserRound size="16"></svg>
             </span>
             <div class="min-w-0 flex-1">
               <p class="truncate text-xs font-medium text-foreground" [title]="auth.user()?.email ?? ''">
                 {{ auth.user()?.email }}
               </p>
-              <p class="text-[11px] text-muted-fg">Signed in</p>
+              <p class="text-[11px] text-muted-foreground">Signed in</p>
             </div>
           </div>
           <div class="flex gap-1">
             <button
               type="button"
-              class="touch-target flex-1 rounded-lg text-muted transition-colors hover:bg-elevated hover:text-foreground"
+              class="touch-target flex-1 rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
               [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
               (click)="theme.toggle()"
             >
@@ -106,7 +106,7 @@ interface NavItem {
             </button>
             <button
               type="button"
-              class="touch-target flex-1 rounded-lg text-muted transition-colors hover:bg-elevated hover:text-foreground"
+              class="touch-target flex-1 rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
               aria-label="Sign out"
               (click)="auth.signOut()"
             >
@@ -118,7 +118,7 @@ interface NavItem {
 
       <!-- Mobile top bar -->
       <header
-        class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-sidebar/90 px-4 backdrop-blur-md md:hidden"
+        class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-4 backdrop-blur-md md:hidden"
       >
         <a routerLink="/dashboard" class="outline-none">
           <app-logo size="sm" />
@@ -126,14 +126,14 @@ interface NavItem {
         <div class="flex items-center gap-0.5">
           <a
             routerLink="/settings/profile"
-            class="touch-target rounded-lg text-muted hover:bg-elevated hover:text-foreground"
+            class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             aria-label="Profile and settings"
           >
             <svg lucideSettings size="18" strokeWidth="1.75"></svg>
           </a>
           <button
             type="button"
-            class="touch-target rounded-lg text-muted hover:bg-elevated hover:text-foreground"
+            class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
             (click)="theme.toggle()"
           >
@@ -154,7 +154,7 @@ interface NavItem {
 
       <!-- Mobile bottom navigation -->
       <nav
-        class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur-md md:hidden"
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md md:hidden"
         style="padding-bottom: var(--safe-bottom)"
         aria-label="Primary mobile"
       >
@@ -162,8 +162,8 @@ interface NavItem {
           @for (item of mobileNav; track item.path) {
             <a
               [routerLink]="item.path"
-              routerLinkActive="text-accent"
-              class="flex flex-col items-center justify-center gap-1 text-[10px] font-medium text-muted transition-colors"
+              routerLinkActive="text-primary"
+              class="flex flex-col items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground transition-colors"
             >
               @switch (item.icon) {
                 @case ('dashboard') { <svg lucideLayoutDashboard size="20" strokeWidth="1.75"></svg> }

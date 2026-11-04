@@ -11,8 +11,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
       @for (tab of tabs; track tab.path) {
         <a
           [routerLink]="tab.path"
-          routerLinkActive="bg-accent-soft text-accent"
-          class="flex min-h-10 flex-1 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted transition-colors hover:text-foreground sm:flex-none"
+          routerLinkActive="bg-primary-soft text-primary"
+          class="flex min-h-10 flex-1 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground sm:flex-none"
         >
           {{ tab.label }}
         </a>

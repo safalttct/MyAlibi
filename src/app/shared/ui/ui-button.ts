@@ -8,11 +8,11 @@ const BASE =
   'select-none whitespace-nowrap disabled:pointer-events-none disabled:opacity-50';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-accent-foreground hover:bg-accent/90',
-  secondary: 'bg-card-hover text-foreground border border-border hover:bg-border/60',
-  outline: 'border border-border bg-transparent text-foreground hover:bg-card-hover',
-  ghost: 'bg-transparent text-muted hover:bg-card-hover hover:text-foreground',
-  danger: 'bg-danger text-white hover:bg-danger/90',
+  primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  secondary: 'bg-secondary text-secondary-foreground border border-border hover:bg-surface-hover',
+  outline: 'border border-border bg-transparent text-foreground hover:bg-surface-hover',
+  ghost: 'bg-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+  danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
 };
 
 const SIZES: Record<ButtonSize, string> = {

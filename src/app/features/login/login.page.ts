@@ -41,11 +41,11 @@ type Mode = 'signin' | 'signup';
             <div class="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 text-sm font-medium" role="tablist">
               <button type="button" role="tab" [attr.aria-selected]="mode() === 'signin'"
                 class="min-h-10 rounded-lg transition-colors"
-                [class]="mode() === 'signin' ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted hover:text-foreground'"
+                [class]="mode() === 'signin' ? 'bg-primary-soft text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                 (click)="setMode('signin')">Sign in</button>
               <button type="button" role="tab" [attr.aria-selected]="mode() === 'signup'"
                 class="min-h-10 rounded-lg transition-colors"
-                [class]="mode() === 'signup' ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted hover:text-foreground'"
+                [class]="mode() === 'signup' ? 'bg-primary-soft text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                 (click)="setMode('signup')">Create account</button>
             </div>
 

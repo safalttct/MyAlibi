@@ -31,7 +31,7 @@ export class AppLogo {
 
   protected readonly src = computed(() => {
     const mode = this.forceTheme() ?? this.theme.theme();
-    // Dark UI → light-on-dark asset; light UI → dark-on-light asset.
+    // Official assets: light logo on light UI, dark logo on dark UI.
     return mode === 'light'
       ? '/assets/branding/myalibi-light.png'
       : '/assets/branding/myalibi-dark.png';

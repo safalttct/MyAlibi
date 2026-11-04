@@ -4,11 +4,11 @@ import { LeaveCategory, categoryMeta } from '../../core/models/leave.models';
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 const TONES: Record<BadgeTone, string> = {
-  neutral: 'bg-card-hover text-muted border-border',
+  neutral: 'bg-surface-hover text-muted-foreground border-border',
   success: 'bg-success/15 text-success border-success/30',
   warning: 'bg-warning/15 text-warning border-warning/30',
-  danger: 'bg-danger/15 text-danger border-danger/30',
-  info: 'bg-accent/15 text-accent border-accent/30',
+  danger: 'bg-destructive/15 text-destructive border-destructive/30',
+  info: 'bg-primary-soft text-primary border-primary/25',
 };
 
 @Component({

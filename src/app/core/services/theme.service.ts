@@ -21,6 +21,7 @@ export class ThemeService {
       const meta = this.document.querySelector('meta[name="theme-color"]');
       if (meta) {
         meta.setAttribute('content', theme === 'light' ? '#FAFAFC' : '#09090B');
+        // Brand mark in chrome: lavender soft on light, charcoal on dark.
       }
       try {
         localStorage.setItem(STORAGE_KEY, theme);
