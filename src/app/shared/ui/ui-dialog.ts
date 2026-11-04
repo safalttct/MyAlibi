@@ -24,7 +24,7 @@ import { LucideX } from '@lucide/angular';
           role="dialog"
           aria-modal="true"
           [attr.aria-label]="title()"
-          class="relative flex max-h-[96dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl"
+          class="relative flex max-h-[96dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-md sm:max-h-[90dvh] sm:rounded-2xl"
           [class]="widthClass()"
         >
           <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5 sm:py-4">

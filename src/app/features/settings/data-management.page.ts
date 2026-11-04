@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { LucideDatabaseBackup, LucideDownload, LucideFileUp, LucideUpload } from '@lucide/angular';
+import { LucideDatabaseBackup, LucideFileUp, LucideUpload } from '@lucide/angular';
 import { format } from 'date-fns';
 import { CATEGORIES, ImportBatch } from '../../core/models/leave.models';
 import {
@@ -15,6 +15,8 @@ import { ToastService } from '../../core/services/toast.service';
 import { serializeCsv } from '../../core/utils/csv';
 import { fromIsoDate } from '../../core/utils/dates';
 import { downloadText } from '../../core/utils/download';
+import { downloadRecordsPdf } from '../../core/utils/export-records-pdf';
+import { ExportMenu } from '../../shared/components/export-menu';
 import { PageHeader } from '../../shared/components/page-header';
 import { SettingsTabs } from '../../shared/components/settings-tabs';
 import { UiBadge, BadgeTone } from '../../shared/ui/ui-badge';
@@ -49,13 +51,13 @@ const STATE_LABEL: Record<PreviewRowState, string> = {
     UiBadge,
     UiConfirmDialog,
     UiEmptyState,
-    LucideDownload,
+    ExportMenu,
     LucideUpload,
     LucideFileUp,
     LucideDatabaseBackup,
   ],
   template: `
-    <app-page-header title="Settings" subtitle="Import, export and back up your data" />
+    <app-page-header eyebrow="Settings" title="Data" subtitle="Import, export and back up your data" />
     <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <div class="grid gap-4">
@@ -130,13 +132,14 @@ const STATE_LABEL: Record<PreviewRowState, string> = {
       </ui-card>
 
       <div class="grid gap-4 md:grid-cols-2">
-        <ui-card title="Export" description="Download your data.">
+        <ui-card title="Export" description="Download all records or a full JSON backup.">
           <div class="flex flex-wrap gap-2">
-            <button uiButton variant="outline" size="sm" [loading]="busy() === 'csv'" (click)="exportCsv()">
-              <svg lucideDownload size="14"></svg> Export CSV
-            </button>
+            <app-export-menu
+              [loading]="busy() === 'csv' || busy() === 'pdf'"
+              (selected)="chooseExport($event)"
+            />
             <button uiButton variant="outline" size="sm" [loading]="busy() === 'json'" (click)="exportJson()">
-              <svg lucideDatabaseBackup size="14"></svg> Export JSON backup
+              <svg lucideDatabaseBackup size="14"></svg> JSON backup
             </button>
           </div>
         </ui-card>
@@ -197,7 +200,7 @@ export class DataManagementPage {
   private readonly toast = inject(ToastService);
 
   protected readonly categories = CATEGORIES;
-  protected readonly busy = signal<'preview' | 'import' | 'csv' | 'json' | 'restore' | null>(null);
+  protected readonly busy = signal<'preview' | 'import' | 'csv' | 'pdf' | 'json' | 'restore' | null>(null);
   protected readonly preview = signal<ImportPreview | null>(null);
   protected readonly batches = signal<ImportBatch[]>([]);
   protected readonly pendingBackup = signal<ReturnType<typeof parseBackup> | null>(null);
@@ -287,7 +290,15 @@ export class DataManagementPage {
     }
   }
 
-  protected async exportCsv(): Promise<void> {
+  protected chooseExport(format: 'csv' | 'pdf'): void {
+    if (format === 'csv') {
+      void this.exportCsv();
+    } else {
+      void this.exportPdf();
+    }
+  }
+
+  private async exportCsv(): Promise<void> {
     this.busy.set('csv');
     try {
       const all = await this.records.list();
@@ -304,6 +315,19 @@ export class DataManagementPage {
       );
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : 'Export failed.');
+    } finally {
+      this.busy.set(null);
+    }
+  }
+
+  private async exportPdf(): Promise<void> {
+    this.busy.set('pdf');
+    try {
+      const all = await this.records.list();
+      downloadRecordsPdf(all, { title: 'Leave & WFH records' });
+      this.toast.success('PDF downloaded');
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : 'PDF export failed.');
     } finally {
       this.busy.set(null);
     }

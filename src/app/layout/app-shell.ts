@@ -180,13 +180,16 @@ interface NavItem {
             <a
               [routerLink]="item.path"
               routerLinkActive="text-primary"
-              class="flex flex-col items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground transition-colors"
+              #rla="routerLinkActive"
+              [attr.aria-current]="rla.isActive ? 'page' : null"
+              class="flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors"
+              [class.bg-primary-soft]="rla.isActive"
             >
               @switch (item.icon) {
                 @case ('dashboard') { <svg lucideLayoutDashboard size="20" strokeWidth="1.75"></svg> }
                 @case ('records') { <svg lucideListChecks size="20" strokeWidth="1.75"></svg> }
                 @case ('calendar') { <svg lucideCalendar size="20" strokeWidth="1.75"></svg> }
-                @case ('analytics') { <svg lucideChartColumn size="20" strokeWidth="1.75"></svg> }
+                @case ('compoff') { <svg lucideTimer size="20" strokeWidth="1.75"></svg> }
               }
               <span>{{ item.short }}</span>
             </a>
@@ -226,8 +229,8 @@ export class AppShell {
     { path: '/dashboard', label: 'Dashboard', short: 'Home', icon: 'dashboard', mobile: true },
     { path: '/records', label: 'Records', short: 'Records', icon: 'records', mobile: true },
     { path: '/calendar', label: 'Calendar', short: 'Calendar', icon: 'calendar', mobile: true },
-    { path: '/analytics', label: 'Analytics', short: 'Stats', icon: 'analytics', mobile: true },
-    { path: '/comp-off', label: 'Comp Off', short: 'Comp', icon: 'compoff' },
+    { path: '/comp-off', label: 'Comp Off', short: 'Comp', icon: 'compoff', mobile: true },
+    { path: '/analytics', label: 'Analytics', short: 'Stats', icon: 'analytics' },
     { path: '/settings', label: 'Settings', short: 'Settings', icon: 'settings' },
   ];
 
@@ -248,12 +251,17 @@ export class AppShell {
     await this.categoryPrefs.ensureLoaded();
     const result = await this.fiscalYear.ensureCurrentFiscalYear();
     if (result?.created) {
-      this.toast.success(`Started ${this.fiscalYear.currentLabel()} — entitlements rolled over`);
+      const label = this.fiscalYear.currentLabel();
+      this.toast.success(
+        result.firstSeed
+          ? `Started ${label} with team defaults`
+          : `Started ${label} — entitlements rolled over`,
+      );
     }
     await this.onboarding.ensureLoaded();
   }
 
   private syncMoreActive(url: string): void {
-    this.moreActive.set(url.startsWith('/comp-off') || url.startsWith('/settings'));
+    this.moreActive.set(url.startsWith('/analytics') || url.startsWith('/settings'));
   }
 }

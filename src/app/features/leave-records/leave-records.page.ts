@@ -1,22 +1,36 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   LucideArrowDown,
   LucideArrowUp,
-  LucideDownload,
+  LucideFilter,
+  LucideListChecks,
   LucidePencil,
   LucidePlus,
   LucideSearch,
   LucideTrash2,
+  LucideX,
 } from '@lucide/angular';
 import { format } from 'date-fns';
-import { DURATIONS, LeaveRecord, durationToDays } from '../../core/models/leave.models';
+import { map } from 'rxjs';
+import {
+  DURATIONS,
+  LeaveCategory,
+  LeaveRecord,
+  categoryMeta,
+  durationToDays,
+  isLeaveCategory,
+} from '../../core/models/leave.models';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import { ToastService } from '../../core/services/toast.service';
 import { serializeCsv } from '../../core/utils/csv';
 import { fromIsoDate } from '../../core/utils/dates';
 import { downloadText } from '../../core/utils/download';
+import { downloadRecordsPdf } from '../../core/utils/export-records-pdf';
+import { ExportMenu } from '../../shared/components/export-menu';
 import { LeaveRecordDialog } from '../../shared/components/leave-record-dialog';
 import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
@@ -24,6 +38,7 @@ import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
 import { UiConfirmDialog } from '../../shared/ui/ui-confirm-dialog';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
+import { UiField } from '../../shared/ui/ui-field';
 import { UiInput } from '../../shared/ui/ui-input';
 import { UiSelect } from '../../shared/ui/ui-select';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
@@ -41,62 +56,123 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
     UiButton,
     UiInput,
     UiSelect,
+    UiField,
     UiSkeleton,
     UiEmptyState,
     UiConfirmDialog,
     LeaveRecordDialog,
+    ExportMenu,
     LucidePlus,
-    LucideDownload,
     LucideSearch,
     LucidePencil,
     LucideTrash2,
     LucideArrowUp,
     LucideArrowDown,
+    LucideFilter,
+    LucideListChecks,
+    LucideX,
   ],
   template: `
     <app-page-header title="Records" subtitle="Every leave and work-from-home entry">
-      <button
-        uiButton
-        variant="outline"
-        size="sm"
-        class="max-sm:order-2"
-        (click)="exportCsv()"
-        [disabled]="filtered().length === 0"
-      >
-        <svg lucideDownload size="14"></svg> Export
-      </button>
+      <div class="max-sm:order-2 max-sm:flex-1">
+        <app-export-menu
+          class="block w-full [&_button]:w-full sm:[&_button]:w-auto"
+          [disabled]="filtered().length === 0"
+          [loading]="exportingPdf()"
+          (selected)="chooseExport($event)"
+        />
+      </div>
       <button uiButton size="sm" class="max-sm:order-1" (click)="openAdd()">
         <svg lucidePlus size="14"></svg> Add record
       </button>
     </app-page-header>
 
     <ui-card [padded]="false">
-      <div class="grid grid-cols-1 gap-2.5 border-b border-border p-3 sm:grid-cols-2 sm:gap-3 sm:p-4 lg:grid-cols-6">
-        <label class="relative sm:col-span-2">
-          <span class="sr-only">Search</span>
-          <svg lucideSearch size="14" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"></svg>
-          <input uiInput type="search" class="pl-9" placeholder="Search title or notes" [value]="search()"
-            (input)="search.set(val($event)); page.set(1)" />
-        </label>
-        <select uiSelect aria-label="Category" [value]="category()" (change)="category.set(val($event)); page.set(1)">
-          <option value="">All categories</option>
-          @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.label }}</option> }
-        </select>
-        <select uiSelect aria-label="Duration" [value]="duration()" (change)="duration.set(val($event)); page.set(1)">
-          <option value="">Any duration</option>
-          @for (d of durations; track d) { <option [value]="d">{{ d }}</option> }
-          <option value="none">Needs review</option>
-        </select>
-        <input uiInput type="month" aria-label="Month" [value]="month()" (input)="month.set(val($event)); page.set(1)" />
-        <div class="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-3">
-          <input uiInput type="date" aria-label="From date" [value]="from()" (input)="from.set(val($event)); page.set(1)" />
-          <input uiInput type="date" aria-label="To date" [value]="to()" (input)="to.set(val($event)); page.set(1)" />
-        </div>
-        <div class="flex flex-wrap items-center justify-between gap-2 sm:col-span-2 lg:col-span-3">
-          <span class="text-xs text-muted tabular-nums">{{ filtered().length }} record(s) · {{ totalDays() }} day(s)</span>
+      <div class="border-b border-border p-3 sm:p-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="relative min-w-0 flex-1 sm:max-w-xs">
+            <svg lucideSearch size="14" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"></svg>
+            <input
+              uiInput
+              type="search"
+              class="pl-9"
+              placeholder="Search title or notes"
+              [value]="search()"
+              (input)="search.set(val($event)); page.set(1)"
+            />
+          </label>
+          <button
+            uiButton
+            variant="outline"
+            size="sm"
+            type="button"
+            class="sm:hidden"
+            [attr.aria-expanded]="filtersOpen()"
+            (click)="filtersOpen.update((v) => !v)"
+          >
+            <svg lucideFilter size="14"></svg> Filters
+            @if (advancedFilterCount() > 0) {
+              <span class="tabular-nums">({{ advancedFilterCount() }})</span>
+            }
+          </button>
           @if (hasFilters()) {
-            <button uiButton variant="ghost" size="sm" (click)="clearFilters()">Clear filters</button>
+            <button uiButton variant="ghost" size="sm" type="button" (click)="clearFilters()">Clear</button>
           }
+          <span class="ml-auto text-xs text-muted tabular-nums max-sm:w-full max-sm:pt-1"
+            >{{ filtered().length }} record(s) · {{ totalDays() }} day(s)</span
+          >
+        </div>
+
+        @if (filterChips().length > 0) {
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            @for (chip of filterChips(); track chip.key) {
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full border border-border bg-elevated/60 px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-card-hover"
+                (click)="clearChip(chip.key)"
+              >
+                {{ chip.label }}
+                <svg lucideX size="12" class="opacity-60"></svg>
+              </button>
+            }
+          </div>
+        }
+
+        <div
+          class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"
+          [class.max-sm:hidden]="!filtersOpen()"
+        >
+          <ui-field label="Category">
+            <select uiSelect [value]="category()" (change)="setCategory(val($event))">
+              <option value="">All categories</option>
+              @for (c of categories(); track c.id) {
+                <option [value]="c.id">{{ c.label }}</option>
+              }
+            </select>
+          </ui-field>
+          <ui-field label="Duration">
+            <select uiSelect [value]="duration()" (change)="duration.set(val($event)); page.set(1)">
+              <option value="">Any duration</option>
+              @for (d of durations; track d) {
+                <option [value]="d">{{ d }}</option>
+              }
+              <option value="none">Needs review</option>
+            </select>
+          </ui-field>
+          <ui-field label="Month" hint="Clears from/to when set">
+            <input
+              uiInput
+              type="month"
+              [value]="month()"
+              (input)="setMonth(val($event))"
+            />
+          </ui-field>
+          <ui-field label="From date" hint="Clears month when set">
+            <input uiInput type="date" [value]="from()" (input)="setFrom(val($event))" [disabled]="!!month()" />
+          </ui-field>
+          <ui-field label="To date">
+            <input uiInput type="date" [value]="to()" (input)="setTo(val($event))" [disabled]="!!month()" />
+          </ui-field>
         </div>
       </div>
 
@@ -108,14 +184,17 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
         <div class="p-4 sm:p-6">
           <ui-empty-state
             [title]="all().length === 0 ? 'No records yet' : 'No records match your filters'"
-            [description]="all().length === 0 ? 'Add a record or import your CSV files from Settings → Data.' : 'Try clearing or adjusting the filters.'">
+            [description]="all().length === 0 ? 'Add a record or import your CSV files from Settings → Data.' : 'Try clearing or adjusting the filters.'"
+          >
+            <svg emptyIcon lucideListChecks size="28"></svg>
             @if (all().length === 0) {
               <button uiButton size="sm" (click)="openAdd()"><svg lucidePlus size="14"></svg> Add record</button>
+            } @else if (hasFilters()) {
+              <button uiButton size="sm" variant="outline" (click)="clearFilters()">Clear filters</button>
             }
           </ui-empty-state>
         </div>
       } @else {
-        <!-- Desktop table -->
         <div class="hidden overflow-x-auto md:block">
           <table class="w-full text-sm">
             <thead>
@@ -157,7 +236,6 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
           </table>
         </div>
 
-        <!-- Mobile cards -->
         <ul class="divide-y divide-border md:hidden">
           @for (r of pageRows(); track r.id) {
             <li class="flex items-start justify-between gap-2 py-3 pr-1 pl-4">
@@ -211,6 +289,8 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
 export class LeaveRecordsPage {
   private readonly service = inject(LeaveRecordsService);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private readonly prefs = inject(CategoryPreferencesService);
   protected readonly categories = this.prefs.enabledCategories;
@@ -236,16 +316,54 @@ export class LeaveRecordsPage {
   protected readonly sortKey = signal<SortKey>('date');
   protected readonly sortDir = signal<'asc' | 'desc'>('desc');
   protected readonly page = signal(1);
+  protected readonly filtersOpen = signal(false);
 
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<LeaveRecord | null>(null);
   protected readonly deleting = signal<LeaveRecord | null>(null);
   protected readonly busy = signal(false);
+  protected readonly exportingPdf = signal(false);
+
+  private readonly queryCategory = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('category') ?? '')),
+    { initialValue: this.route.snapshot.queryParamMap.get('category') ?? '' },
+  );
 
   protected readonly hasFilters = computed(
     () =>
       !!(this.search() || this.category() || this.duration() || this.month() || this.from() || this.to()),
   );
+
+  protected readonly advancedFilterCount = computed(() => {
+    let n = 0;
+    if (this.category()) n++;
+    if (this.duration()) n++;
+    if (this.month()) n++;
+    if (this.from() || this.to()) n++;
+    return n;
+  });
+
+  protected readonly filterChips = computed(() => {
+    const chips: { key: string; label: string }[] = [];
+    if (this.search()) chips.push({ key: 'search', label: `Search: ${this.search()}` });
+    if (this.category()) {
+      const id = this.category() as LeaveCategory;
+      chips.push({
+        key: 'category',
+        label: isLeaveCategory(id) ? categoryMeta(id).label : this.category(),
+      });
+    }
+    if (this.duration()) {
+      chips.push({
+        key: 'duration',
+        label: this.duration() === 'none' ? 'Needs review' : this.duration(),
+      });
+    }
+    if (this.month()) chips.push({ key: 'month', label: `Month: ${this.month()}` });
+    if (this.from()) chips.push({ key: 'from', label: `From: ${this.from()}` });
+    if (this.to()) chips.push({ key: 'to', label: `To: ${this.to()}` });
+    return chips;
+  });
 
   protected readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -263,8 +381,10 @@ export class LeaveRecordsPage {
         if (category && r.category !== category) return false;
         if (duration === 'none' ? r.duration !== null : duration && r.duration !== duration) return false;
         if (month && !r.date.startsWith(month)) return false;
-        if (from && r.date < from) return false;
-        if (to && r.date > to) return false;
+        if (!month) {
+          if (from && r.date < from) return false;
+          if (to && r.date > to) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -288,6 +408,14 @@ export class LeaveRecordsPage {
   constructor() {
     void this.prefs.ensureLoaded();
     void this.load();
+    effect(() => {
+      const cat = this.queryCategory();
+      if (cat && isLeaveCategory(cat)) {
+        this.category.set(cat);
+        this.filtersOpen.set(true);
+        this.page.set(1);
+      }
+    });
   }
 
   protected async load(): Promise<void> {
@@ -303,6 +431,66 @@ export class LeaveRecordsPage {
 
   protected val(event: Event): string {
     return (event.target as HTMLInputElement | HTMLSelectElement).value;
+  }
+
+  protected setCategory(value: string): void {
+    this.category.set(value);
+    this.page.set(1);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { category: value || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  protected setMonth(value: string): void {
+    this.month.set(value);
+    if (value) {
+      this.from.set('');
+      this.to.set('');
+    }
+    this.page.set(1);
+  }
+
+  protected setFrom(value: string): void {
+    this.from.set(value);
+    if (value) {
+      this.month.set('');
+    }
+    this.page.set(1);
+  }
+
+  protected setTo(value: string): void {
+    this.to.set(value);
+    if (value) {
+      this.month.set('');
+    }
+    this.page.set(1);
+  }
+
+  protected clearChip(key: string): void {
+    switch (key) {
+      case 'search':
+        this.search.set('');
+        break;
+      case 'category':
+        this.setCategory('');
+        break;
+      case 'duration':
+        this.duration.set('');
+        break;
+      case 'month':
+        this.month.set('');
+        break;
+      case 'from':
+        this.from.set('');
+        break;
+      case 'to':
+        this.to.set('');
+        break;
+    }
+    this.page.set(1);
   }
 
   protected toggleSort(key: SortKey): void {
@@ -322,6 +510,12 @@ export class LeaveRecordsPage {
     this.from.set('');
     this.to.set('');
     this.page.set(1);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { category: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   protected openAdd(): void {
@@ -356,8 +550,15 @@ export class LeaveRecordsPage {
     }
   }
 
-  /** Exports the filtered rows in the same shape the importer understands. */
-  protected exportCsv(): void {
+  protected chooseExport(formatKind: 'csv' | 'pdf'): void {
+    if (formatKind === 'csv') {
+      this.exportCsv();
+    } else {
+      this.exportPdf();
+    }
+  }
+
+  private exportCsv(): void {
     const rows = this.filtered().map((r) => {
       const d = fromIsoDate(r.date);
       return [r.title, format(d, 'MMMM d, yyyy'), r.category, format(d, 'MMM yyyy'), r.duration ?? '', r.notes ?? ''];
@@ -367,5 +568,28 @@ export class LeaveRecordsPage {
       serializeCsv([['Entry', 'Date', 'Category', 'Month', 'Type', 'Notes'], ...rows]),
       'text/csv',
     );
+  }
+
+  private exportPdf(): void {
+    const rows = this.filtered();
+    if (rows.length === 0 || this.exportingPdf()) {
+      return;
+    }
+    this.exportingPdf.set(true);
+    try {
+      const bits: string[] = [];
+      if (this.hasFilters()) {
+        bits.push('Filtered view (matches current Records filters)');
+      }
+      downloadRecordsPdf(rows, {
+        title: 'Leave & WFH records',
+        subtitle: bits,
+      });
+      this.toast.success('PDF downloaded');
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : 'PDF export failed.');
+    } finally {
+      this.exportingPdf.set(false);
+    }
   }
 }

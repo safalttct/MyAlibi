@@ -38,8 +38,8 @@
   --overlay: rgb(0 0 0 / 0.55);
 
   --wfh: #3b82f6;
-  --annual: #f59e0b;
-  --casual: #f59e0b; /* legacy alias → annual */
+  --casual: #f59e0b;
+  --annual: #f59e0b; /* legacy alias → casual */
   --sick: #f43f5e;
   --maternity: #ec4899;
   --paternity: #06b6d4;
@@ -47,10 +47,13 @@
   --lop: #a1a1aa;
   --comp: #8b5cf6;
   --carry: #10b981;
+  --holiday: #e11d48;
 
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
+  --elevation-sm: 0 1px 2px rgb(0 0 0 / 0.24);
+  --elevation-md: 0 8px 24px rgb(0 0 0 / 0.35);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --nav-height: 4rem;
 }
@@ -83,8 +86,8 @@
   --overlay: rgb(24 24 27 / 0.4);
 
   --wfh: #2563eb;
-  --annual: #d97706;
   --casual: #d97706;
+  --annual: #d97706;
   --sick: #e11d48;
   --maternity: #db2777;
   --paternity: #0891b2;
@@ -92,6 +95,10 @@
   --lop: #71717a;
   --comp: #7c3aed;
   --carry: #059669;
+  --holiday: #be123c;
+
+  --elevation-sm: 0 1px 2px rgb(24 24 27 / 0.06);
+  --elevation-md: 0 8px 24px rgb(24 24 27 / 0.1);
 }
 
 @theme inline {
@@ -127,6 +134,10 @@
   --color-accent-foreground: var(--primary-foreground);
   --color-accent-soft: var(--primary-soft);
   --color-danger: var(--destructive);
+  --color-muted-fg: var(--muted-foreground);
+
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
 
   --color-wfh: var(--wfh);
   --color-annual: var(--annual);
@@ -138,6 +149,7 @@
   --color-lop: var(--lop);
   --color-comp: var(--comp);
   --color-carry: var(--carry);
+  --color-holiday: var(--holiday);
 
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,

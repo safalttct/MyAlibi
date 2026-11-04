@@ -29,5 +29,6 @@ export class SettingsTabs {
     { path: '/settings/share', label: 'Share to HR' },
     { path: '/settings/profile', label: 'Profile' },
     { path: '/settings/data', label: 'Data' },
+    { path: '/settings/about', label: 'About' },
   ];
 }

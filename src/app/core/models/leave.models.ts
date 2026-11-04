@@ -1,6 +1,6 @@
 export type LeaveCategory =
   | 'Work From Home'
-  | 'Annual Leave'
+  | 'Casual Leave'
   | 'Sick Leave'
   | 'Maternity Leave'
   | 'Paternity Leave'
@@ -8,8 +8,8 @@ export type LeaveCategory =
   | 'Loss of Pay'
   | 'Compensatory Leave'
   | 'Carry Forward Leave'
-  /** @deprecated Legacy CSV / imports — remapped to Annual Leave. */
-  | 'Casual Leave';
+  /** @deprecated Remapped to Casual Leave (briefly stored as Annual Leave). */
+  | 'Annual Leave';
 
 export type LeaveDuration = 'Full Day' | 'Half Day';
 export type LeaveStatus = 'complete' | 'needs_review';
@@ -19,7 +19,7 @@ export type CompOffType = 'earned' | 'used' | 'adjustment';
 export type AllocationMode = 'standard' | 'comp' | 'unpaid' | 'discretionary';
 
 export interface CategoryMeta {
-  readonly id: Exclude<LeaveCategory, 'Casual Leave'>;
+  readonly id: Exclude<LeaveCategory, 'Annual Leave'>;
   readonly label: string;
   readonly short: string;
   /** CSS custom property that carries the category color (see styles.scss). */
@@ -60,15 +60,15 @@ export const CATEGORIES: readonly CategoryMeta[] = [
       'Up to 16 days. Family health (first-degree), personal duties, or commute issues. Prior HR approval; stay available during work hours.',
   },
   {
-    id: 'Annual Leave',
-    label: 'Annual Leave',
-    short: 'Annual',
-    colorVar: '--annual',
-    color: 'var(--annual)',
-    textClass: 'text-annual',
-    softBgClass: 'bg-annual/15',
-    dotClass: 'bg-annual',
-    borderClass: 'border-annual/40',
+    id: 'Casual Leave',
+    label: 'Casual Leave',
+    short: 'Casual',
+    colorVar: '--casual',
+    color: 'var(--casual)',
+    textClass: 'text-casual',
+    softBgClass: 'bg-casual/15',
+    dotClass: 'bg-casual',
+    borderClass: 'border-casual/40',
     isWfh: false,
     defaultAnnual: 12,
     allocationMode: 'standard',
@@ -107,7 +107,7 @@ export const CATEGORIES: readonly CategoryMeta[] = [
     allocationMode: 'comp',
     defaultEnabled: true,
     policyHint:
-      'Earned via extra hours, weekends, or holidays. Valid 3–6 months; cannot be carried forward. Managed in Comp Off ledger.',
+      'After extra hours, request Comp Off from your project manager. Once approved, add it here as Earned — it expires 90 days after the approval/earn date. Use it before expiry. Cannot be carried to the next year.',
   },
   {
     id: 'Carry Forward Leave',
@@ -201,9 +201,9 @@ export const DEFAULT_ENABLED_CATEGORIES: readonly CategoryMeta['id'][] = CATEGOR
   (c) => c.defaultEnabled,
 ).map((c) => c.id);
 
-/** Normalize legacy Casual Leave to Annual Leave. */
+/** Normalize legacy Annual Leave to Casual Leave. */
 export function normalizeCategory(category: LeaveCategory): CategoryMeta['id'] {
-  return category === 'Casual Leave' ? 'Annual Leave' : category;
+  return category === 'Annual Leave' ? 'Casual Leave' : category;
 }
 
 export function categoryMeta(category: LeaveCategory): CategoryMeta {
@@ -219,7 +219,7 @@ export function isLeaveCategory(value: unknown): value is LeaveCategory {
   if (typeof value !== 'string') {
     return false;
   }
-  if (value === 'Casual Leave') {
+  if (value === 'Annual Leave') {
     return true;
   }
   return (CATEGORY_IDS as readonly string[]).includes(value);

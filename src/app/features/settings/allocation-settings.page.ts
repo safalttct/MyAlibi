@@ -56,7 +56,7 @@ import { UiSwitch } from '../../shared/ui/ui-switch';
     LucideInfo,
   ],
   template: `
-    <app-page-header title="Settings" subtitle="Allocations per leave category and period" />
+    <app-page-header eyebrow="Settings" title="Allocations" subtitle="Entitlements per leave category and period" />
     <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <ui-card class="mb-4" title="Financial year" [description]="fyDescription()">

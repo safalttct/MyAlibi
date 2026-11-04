@@ -8,9 +8,11 @@ import {
 } from '@angular/forms';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
+import { OnboardingGuideService } from '../../core/services/onboarding-guide.service';
 import { isChunkLoadError, recoverFromStaleChunk } from '../../core/utils/chunk-reload';
 import { AppFooter } from '../../shared/components/app-footer';
 import { AppLogo } from '../../shared/components/app-logo';
+import { ThemeToggle } from '../../shared/components/theme-toggle';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiField } from '../../shared/ui/ui-field';
 import { UiInput } from '../../shared/ui/ui-input';
@@ -30,12 +32,28 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
 @Component({
   selector: 'app-login-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, AppLogo, AppFooter, UiButton, UiField, UiInput, UiPasswordInput],
+  imports: [
+    ReactiveFormsModule,
+    AppLogo,
+    AppFooter,
+    ThemeToggle,
+    UiButton,
+    UiField,
+    UiInput,
+    UiPasswordInput,
+  ],
   template: `
-    <div class="flex min-h-dvh flex-col bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
-      <div class="flex flex-1 items-center justify-center">
+    <div class="relative flex min-h-dvh flex-col overflow-hidden bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
+      <div
+        class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--primary-soft),_transparent_55%)]"
+        aria-hidden="true"
+      ></div>
+      <div class="absolute top-4 right-4 z-10 sm:top-6 sm:right-6">
+        <app-theme-toggle />
+      </div>
+      <div class="relative z-[1] flex flex-1 items-center justify-center">
       @if (!configured) {
-        <section class="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
+        <section class="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-md sm:p-8">
           <div class="mb-6 flex justify-center">
             <app-logo class="[&_img]:object-center" size="xl" />
           </div>
@@ -57,15 +75,18 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
             <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
           </div>
 
-          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-md sm:p-6">
             @if (mode() === 'signin' || mode() === 'signup') {
               <div
                 class="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 text-sm font-medium"
                 role="tablist"
+                aria-label="Account mode"
               >
                 <button
                   type="button"
                   role="tab"
+                  id="login-tab-signin"
+                  aria-controls="login-panel"
                   [attr.aria-selected]="mode() === 'signin'"
                   class="min-h-10 rounded-lg transition-colors"
                   [class]="
@@ -80,6 +101,8 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
                 <button
                   type="button"
                   role="tab"
+                  id="login-tab-signup"
+                  aria-controls="login-panel"
                   [attr.aria-selected]="mode() === 'signup'"
                   class="min-h-10 rounded-lg transition-colors"
                   [class]="
@@ -104,7 +127,17 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
               </div>
             }
 
-            <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4" novalidate>
+            <form
+              id="login-panel"
+              role="tabpanel"
+              [attr.aria-labelledby]="
+                mode() === 'signin' ? 'login-tab-signin' : mode() === 'signup' ? 'login-tab-signup' : null
+              "
+              [formGroup]="form"
+              (ngSubmit)="submit()"
+              class="grid gap-4"
+              novalidate
+            >
               @if (mode() === 'signin' || mode() === 'signup' || mode() === 'reset') {
                 <ui-field label="Email" [error]="fieldError('email')" [required]="true">
                   <input
@@ -199,6 +232,7 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
 export class LoginPage {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly auth = inject(AuthService);
+  private readonly onboarding = inject(OnboardingGuideService);
 
   protected readonly configured = environment.configured;
   protected readonly mode = signal<Mode>('signin');
@@ -344,16 +378,26 @@ export class LoginPage {
         return;
       }
 
-      const result =
-        mode === 'signin'
-          ? await this.auth.signIn(email.trim(), password)
-          : await this.auth.signUp(email.trim(), password);
+      if (mode === 'signin') {
+        const result = await this.auth.signIn(email.trim(), password);
+        if (result.error) {
+          this.error.set(result.error);
+        } else {
+          await this.goHome();
+        }
+        return;
+      }
+
+      const result = await this.auth.signUp(email.trim(), password);
       if (result.error) {
         this.error.set(result.error);
       } else if (result.needsConfirmation) {
+        // Pending flag survives email confirm → first sign-in still opens the guide.
+        await this.onboarding.markPendingAfterSignup();
         this.info.set('Account created. Check your email to confirm your address, then sign in.');
         this.setMode('signin');
       } else {
+        await this.onboarding.markPendingAfterSignup();
         await this.goHome();
       }
     } catch (e) {

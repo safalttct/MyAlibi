@@ -10,7 +10,7 @@ describe('buildSourceKey', () => {
   });
 
   it('differs by duration, date and category', () => {
-    const base = { title: 'x', date: '2026-01-01', category: 'Annual Leave', duration: 'Full Day' } as const;
+    const base = { title: 'x', date: '2026-01-01', category: 'Casual Leave', duration: 'Full Day' } as const;
     expect(buildSourceKey(base)).not.toBe(buildSourceKey({ ...base, duration: 'Half Day' }));
     expect(buildSourceKey(base)).not.toBe(buildSourceKey({ ...base, date: '2026-01-02' }));
     expect(buildSourceKey(base)).not.toBe(buildSourceKey({ ...base, category: 'Sick Leave' }));

@@ -43,7 +43,7 @@ function timezones(current: string): string[] {
     LucideDownload,
   ],
   template: `
-    <app-page-header title="Settings" subtitle="Your profile and account" />
+    <app-page-header eyebrow="Settings" title="Profile" subtitle="Your profile and account" />
     <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <div class="grid max-w-xl gap-4">

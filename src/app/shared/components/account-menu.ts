@@ -2,13 +2,15 @@ import { ChangeDetectionStrategy, Component, inject, input, output } from '@angu
 import { RouterLink } from '@angular/router';
 import {
   LucideBookOpen,
+  LucideChartColumn,
   LucideDatabase,
   LucideDownload,
+  LucideInfo,
   LucideLogOut,
   LucideMoon,
   LucideSettings,
+  LucideShare2,
   LucideSun,
-  LucideTimer,
   LucideUserRound,
 } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
@@ -19,7 +21,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { UiDialog } from '../ui/ui-dialog';
 
 /**
- * Mobile-first account / “More” sheet: Comp Off, Settings, theme, sign out.
+ * Mobile-first account / “More” sheet: Analytics, Settings, theme, sign out.
  */
 @Component({
   selector: 'app-account-menu',
@@ -27,10 +29,12 @@ import { UiDialog } from '../ui/ui-dialog';
   imports: [
     RouterLink,
     UiDialog,
-    LucideTimer,
+    LucideChartColumn,
+    LucideShare2,
     LucideSettings,
     LucideDatabase,
     LucideUserRound,
+    LucideInfo,
     LucideSun,
     LucideMoon,
     LucideLogOut,
@@ -47,14 +51,14 @@ import { UiDialog } from '../ui/ui-dialog';
     >
       <div class="grid gap-1">
         <a
-          routerLink="/comp-off"
+          routerLink="/analytics"
           class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
           (click)="closed.emit()"
         >
-          <span class="flex size-9 items-center justify-center rounded-lg bg-comp/15 text-comp">
-            <svg lucideTimer size="18" strokeWidth="1.75"></svg>
+          <span class="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+            <svg lucideChartColumn size="18" strokeWidth="1.75"></svg>
           </span>
-          Comp Off
+          Analytics
         </a>
         <a
           routerLink="/settings/allocations"
@@ -65,6 +69,16 @@ import { UiDialog } from '../ui/ui-dialog';
             <svg lucideSettings size="18" strokeWidth="1.75"></svg>
           </span>
           Allocations
+        </a>
+        <a
+          routerLink="/settings/share"
+          class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
+          (click)="closed.emit()"
+        >
+          <span class="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+            <svg lucideShare2 size="18" strokeWidth="1.75"></svg>
+          </span>
+          Share to HR
         </a>
         <a
           routerLink="/settings/profile"
@@ -85,6 +99,16 @@ import { UiDialog } from '../ui/ui-dialog';
             <svg lucideDatabase size="18" strokeWidth="1.75"></svg>
           </span>
           Data &amp; import
+        </a>
+        <a
+          routerLink="/settings/about"
+          class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
+          (click)="closed.emit()"
+        >
+          <span class="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+            <svg lucideInfo size="18" strokeWidth="1.75"></svg>
+          </span>
+          About
         </a>
       </div>
 

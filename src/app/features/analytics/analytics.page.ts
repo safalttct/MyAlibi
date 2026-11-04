@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { LucideChartColumn } from '@lucide/angular';
 import { format } from 'date-fns';
 import { CATEGORIES, LeaveBalance, MonthlyUsageRow } from '../../core/models/leave.models';
 import { BalanceService } from '../../core/services/balance.service';
@@ -25,7 +26,17 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
 @Component({
   selector: 'app-analytics-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, UiCard, UiSelect, UiSkeleton, UiProgress, UiEmptyState, UiBarChart, UiLineChart],
+  imports: [
+    PageHeader,
+    UiCard,
+    UiSelect,
+    UiSkeleton,
+    UiProgress,
+    UiEmptyState,
+    UiBarChart,
+    UiLineChart,
+    LucideChartColumn,
+  ],
   template: `
     <app-page-header title="Analytics" [subtitle]="periodLabel()">
       <select uiSelect class="w-full sm:w-40" aria-label="Period type" [value]="mode()" (change)="setMode($event)">
@@ -53,7 +64,9 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
       </section>
 
       @if (rows().length === 0 && previousRows().length === 0) {
-        <ui-empty-state title="No usage in this period" description="Add records or pick another period." />
+        <ui-empty-state title="No usage in this period" description="Add records or pick another period.">
+          <svg emptyIcon lucideChartColumn size="28"></svg>
+        </ui-empty-state>
       } @else {
         <div class="grid gap-3 sm:gap-4 lg:grid-cols-2">
           <ui-card title="Monthly usage" description="Days per month, by category" class="lg:col-span-2">

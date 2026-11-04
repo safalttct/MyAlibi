@@ -77,6 +77,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/settings/data-management.page').then((m) => m.DataManagementPage),
       },
+      {
+        path: 'settings/about',
+        title: 'About · MyAlibi',
+        loadComponent: () => import('./features/settings/about.page').then((m) => m.AboutPage),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

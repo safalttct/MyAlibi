@@ -8,7 +8,13 @@ import {
   MonthlyUsageRow,
   durationToDays,
 } from '../models/leave.models';
-import { fiscalYearRange, inRange, todayIso } from '../utils/dates';
+import { addDaysIso, daysBetweenIso, fiscalYearRange, inRange, todayIso } from '../utils/dates';
+
+/** Comp Off is valid for 90 days after PM approval / earn date. */
+export const COMP_OFF_VALIDITY_DAYS = 90;
+
+/** Dashboard / summary window for “expiring soon” alerts (same as validity). */
+export const COMP_OFF_EXPIRY_ALERT_DAYS = COMP_OFF_VALIDITY_DAYS;
 
 /** Minimal record shape needed for calculations (lets tests pass partial objects). */
 export type CalcRecord = Pick<LeaveRecord, 'category' | 'date' | 'duration' | 'status'>;
@@ -265,6 +271,45 @@ export function negativeWarnings(balances: readonly Pick<ComputedBalance, 'categ
       (b) =>
         `${b.category} is over its allocation by ${Math.abs(round1(b.remaining))} day(s).`,
     );
+}
+
+export interface ExpiringCompOffLot {
+  days: number;
+  expiry_date: string;
+  transaction_date: string;
+  days_until_expiry: number;
+}
+
+/**
+ * Earned Comp Off lots that are still valid and expire within `withinDays`.
+ * (Does not FIFO-split against uses — same approach as the Comp Off summary card.)
+ */
+export function expiringCompOffLots(
+  transactions: readonly CalcTransaction[],
+  asOf: string = todayIso(),
+  withinDays: number = COMP_OFF_EXPIRY_ALERT_DAYS,
+): ExpiringCompOffLot[] {
+  const until = addDaysIso(asOf, withinDays);
+  return transactions
+    .filter(
+      (t) =>
+        t.type === 'earned' &&
+        t.expiry_date != null &&
+        t.expiry_date >= asOf &&
+        t.expiry_date <= until &&
+        t.days > 0,
+    )
+    .map((t) => ({
+      days: Number(t.days),
+      expiry_date: t.expiry_date as string,
+      transaction_date: t.transaction_date,
+      days_until_expiry: daysBetweenIso(asOf, t.expiry_date as string),
+    }))
+    .sort((a, b) => a.expiry_date.localeCompare(b.expiry_date));
+}
+
+export function defaultCompOffExpiry(earnDate: string = todayIso()): string {
+  return addDaysIso(earnDate, COMP_OFF_VALIDITY_DAYS);
 }
 
 export interface LedgerRow {

@@ -52,16 +52,16 @@ function balance(
 
 describe('fiscal-year-rollover', () => {
   it('periodHasAllocations detects existing FY rows', () => {
-    const rows = [allocation('Annual Leave', FY2627, 12)];
+    const rows = [allocation('Casual Leave', FY2627, 12)];
     expect(periodHasAllocations(rows, FY2627)).toBe(true);
     expect(periodHasAllocations(rows, FY2728)).toBe(false);
   });
 
   it('listAllocationPeriods returns unique periods newest first', () => {
     const rows = [
-      allocation('Annual Leave', FY2627, 12),
+      allocation('Casual Leave', FY2627, 12),
       allocation('Sick Leave', FY2627, 12),
-      allocation('Annual Leave', FY2728, 12),
+      allocation('Casual Leave', FY2728, 12),
     ];
     expect(listAllocationPeriods(rows)).toEqual([FY2728, FY2627]);
   });
@@ -69,20 +69,20 @@ describe('fiscal-year-rollover', () => {
   it('carries remaining into carry_forward for standard leave', () => {
     const drafts = buildNextYearAllocations(
       FY2728,
-      [allocation('Annual Leave', FY2627, 12)],
-      [balance('Annual Leave', FY2627, 4)],
+      [allocation('Casual Leave', FY2627, 12)],
+      [balance('Casual Leave', FY2627, 4)],
       {
         categories: [
           {
-            id: 'Annual Leave',
-            label: 'Annual Leave',
-            short: 'Annual',
-            colorVar: '--annual',
-            color: 'var(--annual)',
-            textClass: 'text-annual',
-            softBgClass: 'bg-annual/15',
-            dotClass: 'bg-annual',
-            borderClass: 'border-annual/40',
+            id: 'Casual Leave',
+            label: 'Casual Leave',
+            short: 'Casual',
+            colorVar: '--casual',
+            color: 'var(--casual)',
+            textClass: 'text-casual',
+            softBgClass: 'bg-casual/15',
+            dotClass: 'bg-casual',
+            borderClass: 'border-casual/40',
             isWfh: false,
             defaultAnnual: 12,
             allocationMode: 'standard',
@@ -94,7 +94,7 @@ describe('fiscal-year-rollover', () => {
     );
     expect(drafts).toHaveLength(1);
     expect(drafts[0].input).toMatchObject({
-      category: 'Annual Leave',
+      category: 'Casual Leave',
       period_start: FY2728.start,
       period_end: FY2728.end,
       annual_allocation: 12,

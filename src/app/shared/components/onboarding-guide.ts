@@ -8,15 +8,10 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  LucideCalendar,
-  LucideChartColumn,
-  LucideHouse,
-  LucideLayoutDashboard,
   LucideListChecks,
   LucideSettings,
   LucideShare2,
   LucideSparkles,
-  LucideTimer,
 } from '@lucide/angular';
 import { OnboardingGuideService } from '../../core/services/onboarding-guide.service';
 import { UiButton } from '../ui/ui-button';
@@ -26,16 +21,7 @@ interface GuideStep {
   readonly title: string;
   readonly body: string;
   readonly tip?: string;
-  readonly icon:
-    | 'welcome'
-    | 'allocations'
-    | 'records'
-    | 'dashboard'
-    | 'calendar'
-    | 'analytics'
-    | 'compoff'
-    | 'share'
-    | 'done';
+  readonly icon: 'welcome' | 'allocations' | 'records' | 'share';
   readonly ctaPath?: string;
   readonly ctaLabel?: string;
 }
@@ -43,42 +29,32 @@ interface GuideStep {
 const STEPS: readonly GuideStep[] = [
   {
     title: 'Welcome to MyAlibi',
-    body: 'Track leave, work from home, and compensatory off for your financial year (Apr–Mar). This short guide shows the basics — you can skip anytime.',
+    body: 'Track leave, work from home, and compensatory off for your financial year (April–March). This short guide covers the basics — you can skip anytime.',
     tip: 'Your data is private to your account.',
     icon: 'welcome',
   },
   {
-    title: 'Set your yearly balances',
-    body: 'Start in Settings → Allocations. Turn on the leave types you use and enter annual days (for example WFH 16, Annual 12, Sick 12).',
-    tip: 'You can change these later; the current fiscal year is selected by default.',
+    title: 'Your year is ready',
+    body: 'Team defaults are already set for this fiscal year: WFH 16, Casual 12, and Sick 12 days. Open Allocations only if you need to review or adjust.',
+    tip: 'You can change entitlements anytime under Settings → Allocations.',
     icon: 'allocations',
     ctaPath: '/settings/allocations',
-    ctaLabel: 'Open allocations',
+    ctaLabel: 'Review allocations',
   },
   {
     title: 'Log leave and WFH',
-    body: 'Use Add leave or WFH from the dashboard, or open Records. Pick the date, type, and Full / Half day. Incomplete rows stay under Needs review until you finish them.',
+    body: 'From the dashboard, tap Add leave or WFH. Pick the date, type, and Full / Half day. Incomplete rows stay under Needs review until you finish them.',
     icon: 'records',
-    ctaPath: '/records',
-    ctaLabel: 'Open records',
-  },
-  {
-    title: 'Dashboard, calendar & stats',
-    body: 'Home shows remaining balances and this month at a glance. Calendar is for the month view. Analytics shows trends across the year.',
-    icon: 'dashboard',
+    ctaPath: '/dashboard',
+    ctaLabel: 'Go to dashboard',
   },
   {
     title: 'Comp Off & Share to HR',
-    body: 'Earn and use Comp Off in the Comp Off ledger. When HR needs a cross-check, create a view-only link under Settings → Share to HR.',
-    tip: 'Share links never allow edits.',
+    body: 'After your project manager approves Comp Off for extra hours, add an Earn entry — it expires in 90 days. Use it before then. For HR, create a view-only link under Settings → Share to HR.',
+    tip: 'Share links never allow edits. Reopen this guide anytime from the account menu.',
     icon: 'share',
     ctaPath: '/settings/share',
     ctaLabel: 'Share settings',
-  },
-  {
-    title: "You're ready",
-    body: 'Set allocations, then log your first day. Reopen this guide anytime from the account menu (Show guide).',
-    icon: 'done',
   },
 ];
 
@@ -91,12 +67,7 @@ const STEPS: readonly GuideStep[] = [
     LucideSparkles,
     LucideSettings,
     LucideListChecks,
-    LucideLayoutDashboard,
-    LucideCalendar,
-    LucideChartColumn,
-    LucideTimer,
     LucideShare2,
-    LucideHouse,
   ],
   template: `
     <ui-dialog
@@ -122,23 +93,8 @@ const STEPS: readonly GuideStep[] = [
               @case ('records') {
                 <svg lucideListChecks size="20"></svg>
               }
-              @case ('dashboard') {
-                <svg lucideLayoutDashboard size="20"></svg>
-              }
-              @case ('calendar') {
-                <svg lucideCalendar size="20"></svg>
-              }
-              @case ('analytics') {
-                <svg lucideChartColumn size="20"></svg>
-              }
-              @case ('compoff') {
-                <svg lucideTimer size="20"></svg>
-              }
               @case ('share') {
                 <svg lucideShare2 size="20"></svg>
-              }
-              @case ('done') {
-                <svg lucideHouse size="20"></svg>
               }
             }
           </span>
@@ -229,12 +185,13 @@ export class OnboardingGuide {
     await this.guide.complete();
   }
 
+  /** X / Escape / backdrop — remind later; do not mark completed. */
   protected onClose(): void {
-    // Closing via X / Escape counts as skip so it doesn't return every refresh.
-    void this.skip();
+    this.guide.dismissWithoutSaving();
   }
 
   protected go(path: string): void {
+    this.guide.dismissWithoutSaving();
     void this.router.navigateByUrl(path);
   }
 }

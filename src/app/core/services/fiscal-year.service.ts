@@ -22,6 +22,8 @@ const LAST_ENSURED_KEY = 'fiscal_year_last_ensured';
 export interface FiscalYearEnsureResult {
   period: DateRange;
   created: boolean;
+  /** True when seeding a brand-new account (no prior FY rows). */
+  firstSeed: boolean;
   notes: string[];
 }
 
@@ -76,7 +78,12 @@ export class FiscalYearService {
       ]);
 
       if (periodHasAllocations(allAllocations, current)) {
-        const result: FiscalYearEnsureResult = { period: current, created: false, notes: [] };
+        const result: FiscalYearEnsureResult = {
+          period: current,
+          created: false,
+          firstSeed: false,
+          notes: [],
+        };
         this.lastResult.set(result);
         this.ensured.set(true);
         await this.markEnsured(current);
@@ -84,6 +91,7 @@ export class FiscalYearService {
       }
 
       const enabled = this.categoryPrefs.enabledCategories();
+      const firstSeed = allAllocations.length === 0;
       const drafts = buildNextYearAllocations(current, allAllocations, allBalances, {
         categories: enabled.length > 0 ? enabled : undefined,
       });
@@ -95,7 +103,12 @@ export class FiscalYearService {
         notes.push(draft.note);
       }
 
-      const result: FiscalYearEnsureResult = { period: current, created: true, notes };
+      const result: FiscalYearEnsureResult = {
+        period: current,
+        created: true,
+        firstSeed,
+        notes,
+      };
       this.lastResult.set(result);
       this.ensured.set(true);
       await this.markEnsured(current);

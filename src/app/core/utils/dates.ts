@@ -15,6 +15,20 @@ export function todayIso(): string {
   return toIsoDate(new Date());
 }
 
+/** Add calendar days to an ISO date (local). */
+export function addDaysIso(iso: string, days: number): string {
+  const date = fromIsoDate(iso);
+  date.setDate(date.getDate() + days);
+  return toIsoDate(date);
+}
+
+/** Whole days from `fromIso` to `toIso` (can be negative). */
+export function daysBetweenIso(fromIso: string, toIso: string): number {
+  const from = fromIsoDate(fromIso).getTime();
+  const to = fromIsoDate(toIso).getTime();
+  return Math.round((to - from) / 86_400_000);
+}
+
 export interface DateRange {
   start: string;
   end: string;

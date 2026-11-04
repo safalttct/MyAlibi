@@ -14,6 +14,7 @@ import {
 import { addMonths, format, startOfMonth } from 'date-fns';
 import {
   CategoryMeta,
+  CompOffTransaction,
   LeaveBalance,
   LeaveCategory,
   LeaveRecord,
@@ -21,8 +22,16 @@ import {
 } from '../../core/models/leave.models';
 import { BalanceService } from '../../core/services/balance.service';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
+import { CompOffService } from '../../core/services/comp-off.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
-import { monthlyUsage, negativeWarnings, summarizeUsage } from '../../core/services/leave-calculation';
+import {
+  COMP_OFF_EXPIRY_ALERT_DAYS,
+  COMP_OFF_VALIDITY_DAYS,
+  expiringCompOffLots,
+  monthlyUsage,
+  negativeWarnings,
+  summarizeUsage,
+} from '../../core/services/leave-calculation';
 import { ToastService } from '../../core/services/toast.service';
 import { WEEKDAYS_MON_FIRST, buildMonthGrid } from '../../core/utils/calendar-grid';
 import { fromIsoDate, inRange, todayIso } from '../../core/utils/dates';
@@ -65,15 +74,17 @@ interface BalanceRow {
   ],
   template: `
     <app-page-header title="Dashboard" [subtitle]="subtitle()">
-      <button uiButton size="sm" (click)="openAdd('Annual Leave')">
+      <button uiButton size="sm" (click)="openAdd('Casual Leave')">
         <svg lucidePlus size="14"></svg> Add leave
       </button>
       <button uiButton variant="outline" size="sm" (click)="openAdd('Work From Home')">
         <svg lucideHouse size="14"></svg> WFH
       </button>
-      <button uiButton variant="outline" size="sm" class="max-sm:hidden" (click)="openAdd('Compensatory Leave')">
-        <svg lucideTimerReset size="14"></svg> Use comp off
-      </button>
+      @if (compOffRemaining() > 0) {
+        <button uiButton variant="outline" size="sm" class="max-sm:hidden" (click)="openAdd('Compensatory Leave')">
+          <svg lucideTimerReset size="14"></svg> Use comp off
+        </button>
+      }
     </app-page-header>
 
     @if (error()) {
@@ -92,30 +103,69 @@ interface BalanceRow {
           <div class="min-w-0 flex-1">
             <h2 class="text-sm font-semibold text-foreground">{{ gettingStartedTitle() }}</h2>
             <p class="mt-1 text-sm text-muted">{{ gettingStartedCopy() }}</p>
-            <ol class="mt-3 space-y-2 text-sm">
-              @if (!hasAllocations()) {
-                <li class="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span class="text-foreground">
-                    <span class="font-medium">Set allocations</span>
-                    <span class="text-muted"> — WFH, casual, sick, carry, comp</span>
-                  </span>
-                  <a uiButton size="sm" routerLink="/settings/allocations" class="max-sm:w-full">
-                    <svg lucideSettings size="14"></svg> Open allocations
-                  </a>
-                </li>
-              }
+            <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               @if (records().length === 0) {
-                <li class="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span class="text-foreground">
-                    <span class="font-medium">Add your first day</span>
-                    <span class="text-muted"> — leave or WFH</span>
-                  </span>
-                  <button uiButton size="sm" class="max-sm:w-full" (click)="openAdd('Work From Home')">
-                    <svg lucidePlus size="14"></svg> Add record
-                  </button>
+                <button uiButton size="sm" class="max-sm:w-full" (click)="openAdd('Casual Leave')">
+                  <svg lucidePlus size="14"></svg> Log today’s leave
+                </button>
+                <button uiButton variant="outline" size="sm" class="max-sm:w-full" (click)="openAdd('Work From Home')">
+                  <svg lucideHouse size="14"></svg> Log WFH
+                </button>
+              }
+              @if (!hasAllocations()) {
+                <a uiButton variant="outline" size="sm" routerLink="/settings/allocations" class="max-sm:w-full">
+                  <svg lucideSettings size="14"></svg> Set allocations
+                </a>
+              } @else if (records().length === 0) {
+                <a uiButton variant="ghost" size="sm" routerLink="/settings/allocations" class="max-sm:w-full">
+                  <svg lucideSettings size="14"></svg> Review allocations
+                </a>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (compOffExpiring().length > 0) {
+      <section
+        class="mb-4 rounded-xl border border-warning/40 bg-warning/10 px-3 py-3 text-sm sm:px-4"
+        role="status"
+        aria-label="Comp Off expiring soon"
+      >
+        <div class="flex items-start gap-2">
+          <svg lucideTriangleAlert size="16" class="mt-0.5 shrink-0 text-warning"></svg>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p class="font-medium text-foreground">
+                  {{ compOffExpiringTotal() }} Comp Off day{{ compOffExpiringTotal() === 1 ? '' : 's' }}
+                  expiring within {{ alertDays }} days
+                </p>
+                <p class="mt-0.5 text-muted">
+                  Use them before they lapse ({{ validityDays }}-day validity from approval).
+                </p>
+              </div>
+              <a uiButton size="sm" variant="outline" routerLink="/comp-off" class="shrink-0 max-sm:w-full">
+                <svg lucideTimerReset size="14"></svg> Open Comp Off
+              </a>
+            </div>
+            <ul class="mt-2 space-y-1 text-muted">
+              @for (lot of compOffExpiring(); track lot.expiry_date + lot.transaction_date + lot.days) {
+                <li>
+                  <span class="font-medium tabular-nums text-foreground">{{ lot.days }}</span>
+                  day{{ lot.days === 1 ? '' : 's' }}
+                  · expires {{ lot.expiry_date | date: 'd MMM y' }}
+                  @if (lot.days_until_expiry === 0) {
+                    <span class="text-warning"> (today)</span>
+                  } @else if (lot.days_until_expiry === 1) {
+                    <span class="text-warning"> (tomorrow)</span>
+                  } @else {
+                    <span> (in {{ lot.days_until_expiry }} days)</span>
+                  }
                 </li>
               }
-            </ol>
+            </ul>
           </div>
         </div>
       </section>
@@ -170,7 +220,9 @@ interface BalanceRow {
         @if (loading()) {
           <ui-skeleton class="h-28" />
         } @else if (upcoming().length === 0) {
-          <p class="py-6 text-center text-sm text-muted">Nothing scheduled.</p>
+          <ui-empty-state title="Nothing scheduled" description="Future leave and WFH days will show up here." class="border-0 py-6">
+            <svg emptyIcon lucidePlus size="24"></svg>
+          </ui-empty-state>
         } @else {
           <ul class="-my-1 divide-y divide-border">
             @for (r of upcoming(); track r.id) {
@@ -190,7 +242,8 @@ interface BalanceRow {
         @if (loading()) {
           <ui-skeleton class="h-28" />
         } @else if (recent().length === 0) {
-          <ui-empty-state title="No records yet" description="Add your first leave or WFH day.">
+          <ui-empty-state title="No records yet" description="Add your first leave or WFH day." class="border-0 py-4">
+            <svg emptyIcon lucidePlus size="24"></svg>
             <button uiButton size="sm" (click)="openAdd('Work From Home')"><svg lucidePlus size="14"></svg> Add record</button>
           </ui-empty-state>
         } @else {
@@ -249,6 +302,7 @@ interface BalanceRow {
 export class DashboardPage {
   private readonly balanceService = inject(BalanceService);
   private readonly recordsService = inject(LeaveRecordsService);
+  private readonly compOffService = inject(CompOffService);
   private readonly toast = inject(ToastService);
   private readonly prefs = inject(CategoryPreferencesService);
 
@@ -257,11 +311,14 @@ export class DashboardPage {
   protected readonly todayLabel = format(this.today, 'EEEE, d MMMM y');
   protected readonly weekdays = WEEKDAYS_MON_FIRST;
   protected readonly monthLabel = format(this.today, 'MMMM yyyy');
+  protected readonly validityDays = COMP_OFF_VALIDITY_DAYS;
+  protected readonly alertDays = COMP_OFF_EXPIRY_ALERT_DAYS;
 
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   private readonly balances = signal<LeaveBalance[]>([]);
   protected readonly records = signal<LeaveRecord[]>([]);
+  private readonly compOffTransactions = signal<CompOffTransaction[]>([]);
   private readonly miniMonth = signal(startOfMonth(new Date()));
 
   protected readonly dialogOpen = signal(false);
@@ -296,29 +353,46 @@ export class DashboardPage {
     negativeWarnings(this.cards().flatMap((c) => (c.balance ? [c.balance] : []))),
   );
 
+  protected readonly compOffExpiring = computed(() =>
+    expiringCompOffLots(this.compOffTransactions(), this.todayStr, this.alertDays),
+  );
+
+  protected readonly compOffExpiringTotal = computed(() =>
+    this.compOffExpiring().reduce((sum, lot) => sum + lot.days, 0),
+  );
+
   protected readonly hasAllocations = computed(() =>
     this.balances().some((b) => Number(b.annual_allocation) > 0 || Number(b.total_available) > 0),
   );
+
+  protected readonly compOffRemaining = computed(() => {
+    const row = this.cards().find((c) => c.meta.id === 'Compensatory Leave')?.balance;
+    return row ? Number(row.remaining) || 0 : 0;
+  });
 
   /** Empty entitlements or zero records → show first-run coach. */
   protected readonly showGettingStarted = computed(
     () => !this.hasAllocations() || this.records().length === 0,
   );
 
-  protected readonly gettingStartedTitle = computed(() =>
-    !this.hasAllocations() && this.records().length === 0
-      ? 'Get set up in two steps'
-      : 'Finish getting started',
-  );
+  protected readonly gettingStartedTitle = computed(() => {
+    if (!this.hasAllocations() && this.records().length === 0) {
+      return 'Get set up';
+    }
+    if (this.records().length === 0) {
+      return 'Log your first day';
+    }
+    return 'Finish getting started';
+  });
 
   protected readonly gettingStartedCopy = computed(() => {
     if (!this.hasAllocations() && this.records().length === 0) {
-      return 'Set your leave year entitlements, then log your first day.';
+      return 'Set entitlements, then log leave or WFH to start tracking.';
     }
     if (!this.hasAllocations()) {
       return 'Add your leave year entitlements so balances stay accurate.';
     }
-    return 'Log a leave or WFH day to start tracking.';
+    return 'Your year defaults are ready — add a leave or WFH day to begin.';
   });
 
   private readonly monthRange = computed(() => {
@@ -374,12 +448,14 @@ export class DashboardPage {
 
   protected async load(): Promise<void> {
     try {
-      const [balances, records] = await Promise.all([
+      const [balances, records, compOff] = await Promise.all([
         this.balanceService.fetchBalances(),
         this.recordsService.list(),
+        this.compOffService.list(),
       ]);
       this.balances.set(balances);
       this.records.set(records);
+      this.compOffTransactions.set(compOff);
       this.error.set(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not load dashboard data.';

@@ -7,6 +7,12 @@ import { startWith } from 'rxjs';
 import { CompOffTransaction, CompOffType, LeaveBalance } from '../../core/models/leave.models';
 import { BalanceService } from '../../core/services/balance.service';
 import { CompOffService } from '../../core/services/comp-off.service';
+import {
+  COMP_OFF_EXPIRY_ALERT_DAYS,
+  COMP_OFF_VALIDITY_DAYS,
+  defaultCompOffExpiry,
+  expiringCompOffLots,
+} from '../../core/services/leave-calculation';
 import { LeaveCalculationService } from '../../core/services/leave-calculation.service';
 import { ToastService } from '../../core/services/toast.service';
 import { todayIso } from '../../core/utils/dates';
@@ -52,7 +58,10 @@ const TYPE_LABEL: Record<CompOffType, string> = {
     LucideTrash2,
   ],
   template: `
-    <app-page-header title="Comp Off" subtitle="Earn, use and adjust compensatory leave">
+    <app-page-header
+      title="Comp Off"
+      subtitle="After PM approval, credit earned days here — they expire in {{ validityDays }} days"
+    >
       <button uiButton size="sm" (click)="openForm('earned')"><svg lucidePlus size="14"></svg> Earn</button>
       <button uiButton variant="outline" size="sm" (click)="openForm('used')"><svg lucideMinus size="14"></svg> Use</button>
       <button uiButton variant="outline" size="sm" class="max-sm:basis-full" (click)="openForm('adjustment')">
@@ -64,12 +73,18 @@ const TYPE_LABEL: Record<CompOffType, string> = {
       <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
     }
 
+    <p class="mb-4 text-sm text-muted">
+      Worked extra hours → request Comp Off from your project manager → once approved, add an
+      <span class="font-medium text-foreground">Earn</span> entry. Use the days before the
+      {{ validityDays }}-day expiry.
+    </p>
+
     <section class="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <ui-card><p class="text-xs font-medium text-muted">Available</p>
         <p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums" [class]="summary().remaining < 0 ? 'text-danger' : 'text-comp'">{{ summary().remaining }}</p></ui-card>
       <ui-card><p class="text-xs font-medium text-muted">Credited</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{{ summary().earned }}</p></ui-card>
       <ui-card><p class="text-xs font-medium text-muted">Used</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{{ summary().used }}</p></ui-card>
-      <ui-card><p class="text-xs font-medium text-muted">Expiring in 30 days</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-warning">{{ summary().expiring }}</p></ui-card>
+      <ui-card><p class="text-xs font-medium text-muted">Expiring in {{ alertDays }} days</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-warning">{{ summary().expiring }}</p></ui-card>
     </section>
 
     <ui-card title="Ledger" description="Newest first, with running balance" [padded]="false">
@@ -77,7 +92,11 @@ const TYPE_LABEL: Record<CompOffType, string> = {
         <div class="space-y-2 p-3 sm:p-4">@for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-14 md:h-10" /> }</div>
       } @else if (ledger().length === 0) {
         <div class="p-4 sm:p-6">
-          <ui-empty-state title="No comp-off activity" description="Record the days you earned to start the ledger.">
+          <ui-empty-state
+            title="No comp-off activity"
+            description="After your project manager approves Comp Off, credit the earned days here."
+          >
+            <svg emptyIcon lucidePlus size="28"></svg>
             <button uiButton size="sm" (click)="openForm('earned')"><svg lucidePlus size="14"></svg> Earn comp off</button>
           </ui-empty-state>
         </div>
@@ -171,11 +190,21 @@ const TYPE_LABEL: Record<CompOffType, string> = {
           </ui-field>
         </div>
         @if (formType() === 'earned') {
-          <ui-field label="Expiry date" hint="Optional. Earned days stop counting after this date.">
+          <ui-field
+            label="Expiry date"
+            [hint]="'Defaults to ' + validityDays + ' days after the earn/approval date. Change only if policy differs.'"
+          >
             <input uiInput type="date" formControlName="expiry" />
           </ui-field>
         }
-        <ui-field label="Notes"><textarea uiInput rows="2" formControlName="notes" placeholder="Optional"></textarea></ui-field>
+        <ui-field label="Notes">
+          <textarea
+            uiInput
+            rows="2"
+            formControlName="notes"
+            [placeholder]="formType() === 'earned' ? 'e.g. PM approved — weekend support 2 Nov' : 'Optional'"
+          ></textarea>
+        </ui-field>
         @if (formError()) {
           <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ formError() }}</p>
         }
@@ -215,16 +244,24 @@ export class CompOffPage {
   protected readonly deleting = signal<CompOffTransaction | null>(null);
   private readonly submitted = signal(false);
 
+  protected readonly validityDays = COMP_OFF_VALIDITY_DAYS;
+  protected readonly alertDays = COMP_OFF_EXPIRY_ALERT_DAYS;
+
   protected readonly form = this.fb.group({
     date: [todayIso(), Validators.required],
     days: [1, [Validators.required, nonZero]],
-    expiry: [''],
+    expiry: [defaultCompOffExpiry()],
     notes: [''],
   });
 
   private readonly daysValue = toSignal(
     this.form.controls.days.valueChanges.pipe(startWith(this.form.controls.days.value)),
     { initialValue: 1 },
+  );
+
+  private readonly formDate = toSignal(
+    this.form.controls.date.valueChanges.pipe(startWith(this.form.controls.date.value)),
+    { initialValue: todayIso() },
   );
 
   protected readonly opening = computed(() => this.balance()?.opening_balance ?? 0);
@@ -236,17 +273,15 @@ export class CompOffPage {
 
   protected readonly summary = computed(() => {
     const today = todayIso();
-    const soon = new Date();
-    soon.setDate(soon.getDate() + 30);
-    const soonIso = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`;
     const bal = this.calc.computeCompOffBalance(
       { category: 'Compensatory Leave', period_start: `${today.slice(0, 4)}-01-01`, period_end: `${today.slice(0, 4)}-12-31`, opening_balance: this.opening(), annual_allocation: 0, carry_forward_allocation: 0, carry_forward_expiry: null },
       this.transactions(),
       today,
     );
-    const expiring = this.transactions()
-      .filter((t) => t.type === 'earned' && t.expiry_date && t.expiry_date >= today && t.expiry_date <= soonIso)
-      .reduce((s, t) => s + t.days, 0);
+    const expiring = expiringCompOffLots(this.transactions(), today, this.alertDays).reduce(
+      (s, lot) => s + lot.days,
+      0,
+    );
     return {
       remaining: bal.remaining,
       earned: bal.total_available - this.opening(),
@@ -259,6 +294,13 @@ export class CompOffPage {
     effect(() => {
       this.formType();
       untracked(() => this.resetForm());
+    });
+    effect(() => {
+      const type = this.formType();
+      const date = this.formDate();
+      if (type === 'earned' && date) {
+        untracked(() => this.form.controls.expiry.setValue(defaultCompOffExpiry(date), { emitEvent: false }));
+      }
     });
     void this.load();
   }
@@ -281,7 +323,13 @@ export class CompOffPage {
   private resetForm(): void {
     this.submitted.set(false);
     this.formError.set(null);
-    this.form.reset({ date: todayIso(), days: 1, expiry: '', notes: '' });
+    const date = todayIso();
+    this.form.reset({
+      date,
+      days: 1,
+      expiry: this.formType() === 'earned' ? defaultCompOffExpiry(date) : '',
+      notes: '',
+    });
   }
 
   protected async load(): Promise<void> {
@@ -313,7 +361,12 @@ export class CompOffPage {
     this.formError.set(null);
     try {
       if (type === 'earned') {
-        await this.compOff.earned({ date, days, expiry: expiry || null, notes });
+        await this.compOff.earned({
+          date,
+          days,
+          expiry: expiry || defaultCompOffExpiry(date),
+          notes,
+        });
       } else if (type === 'used') {
         await this.compOff.used({ date, days, notes });
       } else {

@@ -8,6 +8,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   },
   template: `
     <div class="min-w-0">
+      @if (eyebrow()) {
+        <p class="mb-1 text-[11px] font-medium tracking-wide text-muted uppercase">{{ eyebrow() }}</p>
+      }
       <h1 class="text-xl font-semibold tracking-tight text-foreground sm:text-[1.375rem]">
         {{ title() }}
       </h1>
@@ -25,4 +28,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 export class PageHeader {
   readonly title = input.required<string>();
   readonly subtitle = input<string>('');
+  /** Optional section label above the H1 (e.g. “Settings”). */
+  readonly eyebrow = input<string>('');
 }

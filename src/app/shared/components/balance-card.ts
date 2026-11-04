@@ -9,8 +9,11 @@ import { UiProgress } from '../ui/ui-progress';
   imports: [RouterLink, UiProgress],
   host: { class: 'block' },
   template: `
-    <article
-      class="relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-colors sm:p-5"
+    <a
+      [routerLink]="link()"
+      [queryParams]="queryParams()"
+      class="group relative block overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
+      [attr.aria-label]="ariaLabel()"
     >
       <div
         class="pointer-events-none absolute inset-x-0 top-0 h-0.5"
@@ -42,20 +45,34 @@ import { UiProgress } from '../ui/ui-progress';
           {{ b.used }} used of {{ b.total_available }} · {{ b.usage_percent }}%
         </p>
       } @else {
-        <p class="mt-3 text-[1.75rem] font-semibold text-muted-fg sm:text-3xl">–</p>
+        <p class="mt-3 text-[1.75rem] font-semibold text-muted sm:text-3xl">–</p>
         <p class="mt-3 text-xs text-muted">
           No allocation yet.
-          <a routerLink="/settings/allocations" class="font-medium text-accent hover:underline"
-            >Set one</a
-          >
+          <span class="font-medium text-accent group-hover:underline">Set one</span>
         </p>
       }
-    </article>
+    </a>
   `,
 })
 export class BalanceCard {
   readonly meta = input.required<CategoryMeta>();
   readonly balance = input<LeaveBalance | null>(null);
 
-  protected readonly hasBalance = computed(() => this.balance() !== null);
+  protected readonly link = computed(() =>
+    this.balance()
+      ? ['/records']
+      : ['/settings/allocations'],
+  );
+
+  protected readonly queryParams = computed(() =>
+    this.balance() ? { category: this.meta().id } : {},
+  );
+
+  protected readonly ariaLabel = computed(() => {
+    const b = this.balance();
+    if (!b) {
+      return `${this.meta().label}: no allocation — open settings`;
+    }
+    return `${this.meta().label}: ${b.remaining} left — view records`;
+  });
 }

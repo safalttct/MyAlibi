@@ -145,7 +145,7 @@ export class LeaveRecordDialog {
 
   protected readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
-    category: this.fb.control<LeaveCategory>('Annual Leave', Validators.required),
+    category: this.fb.control<LeaveCategory>('Casual Leave', Validators.required),
     date: [todayIso(), Validators.required],
     duration: this.fb.control<LeaveDuration | null>('Full Day', Validators.required),
     notes: [''],
@@ -171,7 +171,7 @@ export class LeaveRecordDialog {
         this.error.set(null);
         this.submitted.set(false);
         this.confirmDelete.set(false);
-        const fallback = enabled[0]?.id ?? 'Annual Leave';
+        const fallback = enabled[0]?.id ?? 'Casual Leave';
         const category = normalizeCategory(
           record?.category ?? defaultCategory ?? fallback,
         );

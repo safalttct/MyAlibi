@@ -35,7 +35,7 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
     LucideShieldOff,
   ],
   template: `
-    <app-page-header title="Settings" subtitle="Share a view-only link with HR" />
+    <app-page-header eyebrow="Settings" title="Share to HR" subtitle="Share a view-only link with HR" />
     <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <div class="grid max-w-2xl gap-4">

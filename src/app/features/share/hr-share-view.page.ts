@@ -11,6 +11,7 @@ import { HrShareRecord, HrShareService, HrShareSnapshotOk } from '../../core/ser
 import { fiscalYearLabel } from '../../core/utils/dates';
 import { AppFooter } from '../../shared/components/app-footer';
 import { AppLogo } from '../../shared/components/app-logo';
+import { ThemeToggle } from '../../shared/components/theme-toggle';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiCard } from '../../shared/ui/ui-card';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
@@ -21,7 +22,17 @@ type RecordFilter = 'all' | 'leave' | 'wfh';
 @Component({
   selector: 'app-hr-share-view-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, AppLogo, AppFooter, UiCard, UiBadge, UiSkeleton, UiEmptyState, LucideEye],
+  imports: [
+    DatePipe,
+    AppLogo,
+    AppFooter,
+    ThemeToggle,
+    UiCard,
+    UiBadge,
+    UiSkeleton,
+    UiEmptyState,
+    LucideEye,
+  ],
   host: { class: 'block min-h-dvh bg-background' },
   template: `
     <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
@@ -30,12 +41,15 @@ type RecordFilter = 'all' | 'leave' | 'wfh';
           <app-logo size="md" />
           <p class="mt-3 text-sm text-muted">Shared leave summary for HR cross-check</p>
         </div>
-        <span
-          class="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted"
-        >
-          <svg lucideEye size="14"></svg>
-          View only
-        </span>
+        <div class="flex flex-wrap items-center gap-2 self-start">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted"
+          >
+            <svg lucideEye size="14"></svg>
+            View only
+          </span>
+          <app-theme-toggle size="sm" />
+        </div>
       </header>
 
       @if (loading()) {

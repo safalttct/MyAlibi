@@ -26,7 +26,7 @@ describe('reconcileLeaveRows (bundled CSVs)', () => {
 
   it('matches the expected category totals', () => {
     expect(result.totals['Work From Home']).toBe(10);
-    expect(result.totals['Annual Leave']).toBe(5);
+    expect(result.totals['Casual Leave']).toBe(5);
     expect(result.totals['Sick Leave']).toBe(8);
     expect(result.totals['Compensatory Leave']).toBe(2);
     expect(result.totals['Carry Forward Leave']).toBe(0);

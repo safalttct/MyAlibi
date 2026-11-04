@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { LucideChevronLeft, LucideChevronRight, LucidePlus } from '@lucide/angular';
 import { addMonths, format, startOfMonth } from 'date-fns';
+import { holidaysOn, PublicHoliday } from '../../core/data/public-holidays';
 import { LeaveCategory, LeaveRecord, categoryMeta } from '../../core/models/leave.models';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
@@ -12,6 +13,8 @@ import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
+
+type CalendarFilter = '' | LeaveCategory | 'holiday';
 
 @Component({
   selector: 'app-calendar-page',
@@ -40,10 +43,17 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
       </div>
     </app-page-header>
 
-    <div class="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="group" aria-label="Filter by category">
+    <div class="sticky top-14 z-20 -mx-4 mb-4 flex gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur-md sm:static sm:top-auto sm:mx-0 sm:flex-wrap sm:overflow-visible sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none md:top-0" role="group" aria-label="Filter by category">
       <button type="button" class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
         [class]="filter() === '' ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted hover:text-foreground'"
+        [attr.aria-pressed]="filter() === ''"
         (click)="filter.set('')">All</button>
+      <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
+        [class]="filter() === 'holiday' ? 'border-holiday/50 bg-holiday/15 text-holiday' : 'border-border text-muted hover:text-foreground'"
+        [attr.aria-pressed]="filter() === 'holiday'"
+        (click)="filter.set('holiday')">
+        <span class="size-2 rounded-full bg-holiday"></span>Holiday
+      </button>
       @for (c of categories(); track c.id) {
         <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
           [class]="filter() === c.id ? c.borderClass + ' ' + c.softBgClass + ' ' + c.textClass : 'border-border text-muted hover:text-foreground'"
@@ -65,14 +75,14 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
         <div class="grid grid-cols-7">
           @for (day of days(); track day.iso) {
             <div class="group relative min-h-14 border-r border-b border-border p-1 last:border-r-0 sm:min-h-28 sm:p-1.5"
-              [class]="(day.inMonth ? '' : 'bg-background/50 ') + (day.iso === selected() ? 'max-sm:bg-accent-soft' : '')">
+              [class]="dayCellClass(day)">
               <button type="button" class="absolute inset-0 z-10 sm:hidden"
-                [attr.aria-label]="day.iso + (day.records.length ? ', ' + day.records.length + ' record(s)' : '')"
+                [attr.aria-label]="dayAriaLabel(day)"
                 [attr.aria-pressed]="day.iso === selected()"
                 (click)="selected.set(day.iso)"></button>
               <div class="flex items-center justify-center sm:justify-between">
                 <span class="flex size-6 items-center justify-center rounded-full text-xs"
-                  [class]="day.iso === todayStr ? 'bg-accent font-semibold text-accent-foreground' : day.inMonth ? 'text-foreground' : 'text-muted/50'">
+                  [class]="dayNumberClass(day)">
                   {{ day.date.getDate() }}
                 </span>
                 <button type="button" class="rounded p-0.5 text-muted opacity-0 max-sm:hidden transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
@@ -81,9 +91,26 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
                 </button>
               </div>
               <div class="mt-1 flex h-1.5 justify-center gap-0.5 sm:hidden" aria-hidden="true">
-                @for (r of day.records.slice(0, 3); track r.id) { <span class="size-1.5 rounded-full" [class]="meta(r.category).dotClass"></span> }
+                @if (day.holidays.length && showHolidays()) {
+                  <span class="size-1.5 rounded-full bg-holiday"></span>
+                }
+                @for (r of day.records.slice(0, day.holidays.length && showHolidays() ? 2 : 3); track r.id) {
+                  <span class="size-1.5 rounded-full" [class]="meta(r.category).dotClass"></span>
+                }
               </div>
               <ul class="mt-1 space-y-0.5 max-sm:hidden">
+                @if (showHolidays()) {
+                  @for (h of day.holidays; track h.date + h.name) {
+                    <li>
+                      <span
+                        class="flex w-full items-center truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight font-medium text-holiday bg-holiday/15 sm:text-xs"
+                        [attr.title]="h.name"
+                      >
+                        <span class="truncate">{{ h.name }}</span>
+                      </span>
+                    </li>
+                  }
+                }
                 @for (r of day.records; track r.id) {
                   <li>
                     <button type="button"
@@ -106,10 +133,16 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
 
     <ui-card class="mt-3 sm:hidden" [title]="selectedLabel()" description="Selected day">
       <button cardActions uiButton size="sm" (click)="openAdd(selected())"><svg lucidePlus size="14"></svg> Add</button>
-      @if (selectedRecords().length === 0) {
-        <p class="py-4 text-center text-sm text-muted">Nothing on this day.</p>
+      @if (selectedHolidays().length === 0 && selectedRecords().length === 0) {
+        <p class="py-4 text-center text-sm text-muted">Nothing on this day — tap Add to log leave or WFH.</p>
       } @else {
         <ul class="-my-1 divide-y divide-border">
+          @for (h of selectedHolidays(); track h.date + h.name) {
+            <li class="flex min-h-11 items-center justify-between gap-3 py-2">
+              <span class="min-w-0 truncate text-sm font-medium text-holiday">{{ h.name }}</span>
+              <span class="shrink-0 rounded-md border border-holiday/40 bg-holiday/15 px-2 py-0.5 text-[10px] font-medium text-holiday">Holiday</span>
+            </li>
+          }
           @for (r of selectedRecords(); track r.id) {
             <li>
               <button type="button" class="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-card-hover" (click)="openEdit(r)">
@@ -133,7 +166,7 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
       [open]="dialogOpen()"
       [record]="editing()"
       [defaultDate]="defaultDate()"
-      [defaultCategory]="filter() || null"
+      [defaultCategory]="leaveFilterCategory()"
       (closed)="dialogOpen.set(false)"
       (saved)="load()"
     />
@@ -151,7 +184,7 @@ export class CalendarPage {
   protected readonly error = signal<string | null>(null);
   private readonly records = signal<LeaveRecord[]>([]);
   protected readonly month = signal(startOfMonth(new Date()));
-  protected readonly filter = signal<'' | LeaveCategory>('');
+  protected readonly filter = signal<CalendarFilter>('');
 
   protected readonly selected = signal(todayIso());
 
@@ -161,20 +194,42 @@ export class CalendarPage {
 
   protected readonly label = computed(() => format(this.month(), 'MMMM yyyy'));
 
+  protected readonly showHolidays = computed(() => {
+    const f = this.filter();
+    return f === '' || f === 'holiday';
+  });
+
+  protected readonly leaveFilterCategory = computed((): LeaveCategory | null => {
+    const f = this.filter();
+    return f && f !== 'holiday' ? f : null;
+  });
+
   protected readonly days = computed(() => {
     const filter = this.filter();
     const byDate = new Map<string, LeaveRecord[]>();
-    for (const r of this.records()) {
-      if (filter && r.category !== filter) {
-        continue;
+    if (filter !== 'holiday') {
+      for (const r of this.records()) {
+        if (filter && r.category !== filter) {
+          continue;
+        }
+        byDate.set(r.date, [...(byDate.get(r.date) ?? []), r]);
       }
-      byDate.set(r.date, [...(byDate.get(r.date) ?? []), r]);
     }
-    return buildMonthGrid(this.month()).map((day) => ({ ...day, records: byDate.get(day.iso) ?? [] }));
+    return buildMonthGrid(this.month()).map((day) => {
+      const holidays = holidaysOn(day.iso);
+      const showHoliday = filter === '' || filter === 'holiday';
+      return {
+        ...day,
+        records: byDate.get(day.iso) ?? [],
+        holidays: showHoliday ? holidays : ([] as readonly PublicHoliday[]),
+      };
+    });
   });
 
   protected readonly selectedLabel = computed(() => format(fromIsoDate(this.selected()), 'EEEE, d MMMM'));
-  protected readonly selectedRecords = computed(() => this.days().find((d) => d.iso === this.selected())?.records ?? []);
+  protected readonly selectedDay = computed(() => this.days().find((d) => d.iso === this.selected()));
+  protected readonly selectedRecords = computed(() => this.selectedDay()?.records ?? []);
+  protected readonly selectedHolidays = computed(() => this.selectedDay()?.holidays ?? []);
 
   constructor() {
     void this.prefs.ensureLoaded();
@@ -194,6 +249,48 @@ export class CalendarPage {
 
   protected meta(category: LeaveCategory) {
     return categoryMeta(category);
+  }
+
+  protected dayCellClass(day: {
+    inMonth: boolean;
+    iso: string;
+    holidays: readonly PublicHoliday[];
+  }): string {
+    const parts: string[] = [];
+    if (!day.inMonth) {
+      parts.push('bg-background/50');
+    } else if (day.holidays.length > 0) {
+      parts.push('bg-holiday/10');
+    }
+    if (day.iso === this.selected()) {
+      parts.push('max-sm:bg-accent-soft');
+    }
+    return parts.join(' ');
+  }
+
+  protected dayNumberClass(day: { iso: string; inMonth: boolean; holidays: readonly PublicHoliday[] }): string {
+    if (day.iso === this.todayStr) {
+      return 'bg-accent font-semibold text-accent-foreground';
+    }
+    if (day.holidays.length > 0 && day.inMonth) {
+      return 'font-semibold text-holiday';
+    }
+    return day.inMonth ? 'text-foreground' : 'text-muted/50';
+  }
+
+  protected dayAriaLabel(day: {
+    iso: string;
+    records: LeaveRecord[];
+    holidays: readonly PublicHoliday[];
+  }): string {
+    const bits = [day.iso];
+    if (day.holidays.length) {
+      bits.push(day.holidays.map((h) => h.name).join(', '));
+    }
+    if (day.records.length) {
+      bits.push(`${day.records.length} record(s)`);
+    }
+    return bits.join(', ');
   }
 
   protected shift(delta: number): void {

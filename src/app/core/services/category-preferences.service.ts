@@ -60,7 +60,7 @@ export class CategoryPreferencesService {
     }
     // Never allow an empty set — keep at least one type on.
     if (next.size === 0) {
-      next.add('Annual Leave');
+      next.add('Casual Leave');
     }
     this.enabledIds.set(next);
     await this.persist();
