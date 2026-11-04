@@ -18,11 +18,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../core/services/auth.service';
 import { CategoryPreferencesService } from '../core/services/category-preferences.service';
 import { FiscalYearService } from '../core/services/fiscal-year.service';
+import { OnboardingGuideService } from '../core/services/onboarding-guide.service';
 import { ThemeService } from '../core/services/theme.service';
 import { ToastService } from '../core/services/toast.service';
 import { AccountMenu } from '../shared/components/account-menu';
 import { AppFooter } from '../shared/components/app-footer';
 import { AppLogo } from '../shared/components/app-logo';
+import { OnboardingGuide } from '../shared/components/onboarding-guide';
 
 interface NavItem {
   path: string;
@@ -42,6 +44,7 @@ interface NavItem {
     AppLogo,
     AppFooter,
     AccountMenu,
+    OnboardingGuide,
     LucideLayoutDashboard,
     LucideListChecks,
     LucideCalendar,
@@ -203,6 +206,7 @@ interface NavItem {
       </nav>
 
       <app-account-menu [open]="moreOpen()" (closed)="moreOpen.set(false)" />
+      <app-onboarding-guide />
     </div>
   `,
 })
@@ -212,6 +216,7 @@ export class AppShell {
   private readonly router = inject(Router);
   private readonly categoryPrefs = inject(CategoryPreferencesService);
   private readonly fiscalYear = inject(FiscalYearService);
+  private readonly onboarding = inject(OnboardingGuideService);
   private readonly toast = inject(ToastService);
 
   protected readonly moreOpen = signal(false);
@@ -229,7 +234,7 @@ export class AppShell {
   protected readonly mobileNav = this.primaryNav.filter((n) => n.mobile);
 
   constructor() {
-    void this.bootstrapFiscalYear();
+    void this.bootstrapApp();
     this.syncMoreActive(this.router.url);
     this.router.events
       .pipe(
@@ -239,12 +244,13 @@ export class AppShell {
       .subscribe((e) => this.syncMoreActive(e.urlAfterRedirects));
   }
 
-  private async bootstrapFiscalYear(): Promise<void> {
+  private async bootstrapApp(): Promise<void> {
     await this.categoryPrefs.ensureLoaded();
     const result = await this.fiscalYear.ensureCurrentFiscalYear();
     if (result?.created) {
       this.toast.success(`Started ${this.fiscalYear.currentLabel()} — entitlements rolled over`);
     }
+    await this.onboarding.ensureLoaded();
   }
 
   private syncMoreActive(url: string): void {

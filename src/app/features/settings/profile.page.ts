@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { LucideLogOut } from '@lucide/angular';
+import { LucideBookOpen, LucideDownload, LucideLogOut } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
+import { OnboardingGuideService } from '../../core/services/onboarding-guide.service';
+import { PwaInstallService } from '../../core/services/pwa-install.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { ToastService } from '../../core/services/toast.service';
 import { PageHeader } from '../../shared/components/page-header';
@@ -37,6 +39,8 @@ function timezones(current: string): string[] {
     UiSelect,
     UiSkeleton,
     LucideLogOut,
+    LucideBookOpen,
+    LucideDownload,
   ],
   template: `
     <app-page-header title="Settings" subtitle="Your profile and account" />
@@ -70,6 +74,30 @@ function timezones(current: string): string[] {
         }
       </ui-card>
 
+      <ui-card title="Help" description="Install on your phone or replay the guide">
+        <div class="flex flex-col gap-2 sm:flex-row">
+          @if (pwa.canInstall() && !pwa.isStandalone()) {
+            <button uiButton type="button" class="max-sm:w-full" (click)="installApp()">
+              <svg lucideDownload size="16"></svg>
+              Install app
+            </button>
+          }
+          <button uiButton type="button" variant="outline" class="max-sm:w-full" (click)="onboarding.reopen()">
+            <svg lucideBookOpen size="16"></svg>
+            Show guide
+          </button>
+        </div>
+        @if (!pwa.isStandalone() && !pwa.canInstall()) {
+          <p class="mt-3 text-xs text-muted">
+            On iPhone: Safari → Share → Add to Home Screen. On Android Chrome: menu → Install app /
+            Add to Home screen.
+          </p>
+        }
+        @if (pwa.isStandalone()) {
+          <p class="mt-3 text-xs text-muted">Running as an installed app.</p>
+        }
+      </ui-card>
+
       <ui-card title="Account" description="Signed in as this email">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="min-w-0">
@@ -96,6 +124,8 @@ export class ProfilePage {
   private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
   protected readonly auth = inject(AuthService);
+  protected readonly onboarding = inject(OnboardingGuideService);
+  protected readonly pwa = inject(PwaInstallService);
 
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
@@ -113,6 +143,15 @@ export class ProfilePage {
 
   protected nameError(): string | null {
     return this.form.controls.display_name.errors ? 'Use 80 characters or fewer' : null;
+  }
+
+  protected async installApp(): Promise<void> {
+    const outcome = await this.pwa.promptInstall();
+    if (outcome === 'accepted') {
+      this.toast.success('MyAlibi installed');
+    } else if (outcome === 'unavailable') {
+      this.toast.info('Use your browser menu → Add to Home Screen / Install app');
+    }
   }
 
   private async load(): Promise<void> {

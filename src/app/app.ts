@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { PwaInstallService } from './core/services/pwa-install.service';
 import { ThemeService } from './core/services/theme.service';
 import { UiToastHost } from './shared/ui/ui-toast-host';
 
@@ -12,4 +13,6 @@ import { UiToastHost } from './shared/ui/ui-toast-host';
 export class App {
   /** Instantiated eagerly so the persisted theme is applied on startup. */
   protected readonly theme = inject(ThemeService);
+  /** Listen for install prompts as soon as the shell boots. */
+  protected readonly pwa = inject(PwaInstallService);
 }

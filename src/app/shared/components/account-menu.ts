@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  LucideBookOpen,
   LucideDatabase,
+  LucideDownload,
   LucideLogOut,
   LucideMoon,
   LucideSettings,
@@ -10,7 +12,10 @@ import {
   LucideUserRound,
 } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
+import { OnboardingGuideService } from '../../core/services/onboarding-guide.service';
+import { PwaInstallService } from '../../core/services/pwa-install.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { ToastService } from '../../core/services/toast.service';
 import { UiDialog } from '../ui/ui-dialog';
 
 /**
@@ -29,6 +34,8 @@ import { UiDialog } from '../ui/ui-dialog';
     LucideSun,
     LucideMoon,
     LucideLogOut,
+    LucideBookOpen,
+    LucideDownload,
   ],
   template: `
     <ui-dialog
@@ -82,6 +89,28 @@ import { UiDialog } from '../ui/ui-dialog';
       </div>
 
       <div class="mt-3 grid gap-1 border-t border-border pt-3">
+        @if (pwa.canInstall() && !pwa.isStandalone()) {
+          <button
+            type="button"
+            class="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
+            (click)="installApp()"
+          >
+            <span class="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <svg lucideDownload size="18"></svg>
+            </span>
+            Install app
+          </button>
+        }
+        <button
+          type="button"
+          class="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
+          (click)="showGuide()"
+        >
+          <span class="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+            <svg lucideBookOpen size="18"></svg>
+          </span>
+          Show guide
+        </button>
         <button
           type="button"
           class="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
@@ -113,9 +142,27 @@ import { UiDialog } from '../ui/ui-dialog';
 export class AccountMenu {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  protected readonly pwa = inject(PwaInstallService);
+  private readonly onboarding = inject(OnboardingGuideService);
+  private readonly toast = inject(ToastService);
 
   readonly open = input(false);
   readonly closed = output<void>();
+
+  protected showGuide(): void {
+    this.closed.emit();
+    this.onboarding.reopen();
+  }
+
+  protected async installApp(): Promise<void> {
+    const outcome = await this.pwa.promptInstall();
+    this.closed.emit();
+    if (outcome === 'accepted') {
+      this.toast.success('MyAlibi installed');
+    } else if (outcome === 'unavailable') {
+      this.toast.info('Use your browser menu → Add to Home Screen / Install app');
+    }
+  }
 
   protected async signOut(): Promise<void> {
     this.closed.emit();
