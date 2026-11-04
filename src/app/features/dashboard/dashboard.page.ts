@@ -1,7 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { LucideCalendarPlus, LucideChevronLeft, LucideChevronRight, LucideHouse, LucidePlus, LucideTimerReset, LucideTriangleAlert } from '@lucide/angular';
+import { LucideChevronLeft, LucideChevronRight, LucideHouse, LucidePlus, LucideTimerReset, LucideTriangleAlert } from '@lucide/angular';
 import { addMonths, format, startOfMonth } from 'date-fns';
 import {
   CATEGORIES,
@@ -15,17 +14,17 @@ import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import { monthlyUsage, negativeWarnings, summarizeUsage } from '../../core/services/leave-calculation';
 import { ToastService } from '../../core/services/toast.service';
 import { WEEKDAYS_MON_FIRST, buildMonthGrid } from '../../core/utils/calendar-grid';
-import { inRange, todayIso } from '../../core/utils/dates';
+import { fromIsoDate, inRange, todayIso } from '../../core/utils/dates';
+import { BalanceCard } from '../../shared/components/balance-card';
 import { LeaveRecordDialog } from '../../shared/components/leave-record-dialog';
 import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
-import { UiProgress } from '../../shared/ui/ui-progress';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
 
-interface BalanceCard {
+interface BalanceRow {
   meta: CategoryMeta;
   balance: LeaveBalance | null;
 }
@@ -35,91 +34,71 @@ interface BalanceCard {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
-    RouterLink,
     PageHeader,
+    BalanceCard,
     UiCard,
     UiBadge,
     UiButton,
-    UiProgress,
     UiSkeleton,
     UiEmptyState,
     LeaveRecordDialog,
     LucidePlus,
     LucideHouse,
-    LucideCalendarPlus,
     LucideTimerReset,
     LucideChevronLeft,
     LucideChevronRight,
     LucideTriangleAlert,
   ],
   template: `
-    <app-page-header title="Dashboard" [subtitle]="todayLabel">
+    <app-page-header title="Dashboard" [subtitle]="subtitle()">
+      <button uiButton size="sm" (click)="openAdd('Casual Leave')">
+        <svg lucidePlus size="14"></svg> Add
+      </button>
       <button uiButton variant="outline" size="sm" (click)="openAdd('Work From Home')">
-        <svg lucideHouse size="14"></svg> Add WFH
+        <svg lucideHouse size="14"></svg> WFH
       </button>
-      <button uiButton variant="outline" size="sm" (click)="openAdd('Casual Leave')">
-        <svg lucideCalendarPlus size="14"></svg> Add leave
-      </button>
-      <button uiButton variant="outline" size="sm" (click)="openAdd('Compensatory Leave')">
+      <button uiButton variant="outline" size="sm" class="max-sm:hidden" (click)="openAdd('Compensatory Leave')">
         <svg lucideTimerReset size="14"></svg> Use comp off
       </button>
     </app-page-header>
 
     @if (error()) {
-      <p class="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
+      <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
     }
 
     @if (warnings().length > 0) {
-      <div class="mb-4 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">
+      <div class="mb-4 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">
         <svg lucideTriangleAlert size="16" class="mt-0.5 shrink-0"></svg>
         <ul>@for (w of warnings(); track w) { <li>{{ w }}</li> }</ul>
       </div>
     }
 
-    <section aria-label="Balances" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <section aria-label="Balances" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
       @if (loading()) {
-        @for (n of [1, 2, 3, 4, 5]; track n) { <ui-skeleton class="h-36" /> }
+        @for (n of [1, 2, 3, 4, 5]; track n) { <ui-skeleton class="h-32 sm:h-36" /> }
       } @else {
         @for (card of cards(); track card.meta.id) {
-          <ui-card>
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-muted">{{ card.meta.label }}</span>
-              <span class="size-2 rounded-full" [class]="card.meta.dotClass"></span>
-            </div>
-            @if (card.balance; as b) {
-              <p class="mt-3 text-3xl font-semibold tabular-nums" [class]="b.is_negative ? 'text-danger' : card.meta.textClass">
-                {{ b.remaining }}<span class="ml-1 text-sm font-normal text-muted">left</span>
-              </p>
-              <ui-progress class="mt-3" [value]="b.usage_percent" [color]="card.meta.color" [negative]="b.is_negative" />
-              <p class="mt-2 text-xs text-muted">{{ b.used }} used of {{ b.total_available }} · {{ b.usage_percent }}%</p>
-            } @else {
-              <p class="mt-3 text-3xl font-semibold text-muted">–</p>
-              <p class="mt-3 text-xs text-muted">
-                No allocation yet.
-                <a routerLink="/settings/allocations" class="text-accent hover:underline">Set one</a>
-              </p>
-            }
-          </ui-card>
+          <app-balance-card [meta]="card.meta" [balance]="card.balance" />
         }
       }
     </section>
 
-    <div class="mt-6 grid gap-4 lg:grid-cols-3">
-      <ui-card title="This month" [description]="monthLabel" class="lg:col-span-1">
+    <div class="mt-4 grid gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-3">
+      <ui-card title="This month" [description]="monthLabel">
         @if (loading()) {
           <ui-skeleton class="h-28" />
         } @else {
-          <div class="grid grid-cols-2 gap-3 text-center">
-            <div class="rounded-lg bg-wfh/10 p-3">
+          <div class="grid grid-cols-2 gap-2.5 text-center sm:gap-3">
+            <div class="rounded-xl bg-wfh/10 p-3">
               <p class="text-2xl font-semibold text-wfh tabular-nums">{{ monthSummary().wfhDays }}</p>
               <p class="text-xs text-muted">WFH days</p>
             </div>
-            <div class="rounded-lg bg-casual/10 p-3">
+            <div class="rounded-xl bg-casual/10 p-3">
               <p class="text-2xl font-semibold text-casual tabular-nums">{{ monthSummary().leaveDays }}</p>
               <p class="text-xs text-muted">Leave days</p>
             </div>
           </div>
-          <ul class="mt-4 space-y-2">
+          <ul class="mt-3 space-y-1.5 sm:mt-4 sm:space-y-2">
             @for (row of monthByCategory(); track row.meta.id) {
               <li class="flex items-center justify-between text-sm">
                 <span class="flex items-center gap-2 text-muted">
@@ -138,9 +117,9 @@ interface BalanceCard {
         } @else if (upcoming().length === 0) {
           <p class="py-6 text-center text-sm text-muted">Nothing scheduled.</p>
         } @else {
-          <ul class="divide-y divide-border">
+          <ul class="-my-1 divide-y divide-border">
             @for (r of upcoming(); track r.id) {
-              <li><button type="button" class="flex w-full items-center justify-between gap-3 py-2.5 text-left" (click)="openEdit(r)">
+              <li><button type="button" class="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-card-hover" (click)="openEdit(r)">
                 <span class="min-w-0">
                   <span class="block truncate text-sm font-medium">{{ r.title }}</span>
                   <span class="text-xs text-muted">{{ r.date | date: 'EEE, d MMM' }} · {{ r.duration ?? 'Needs review' }}</span>
@@ -160,9 +139,9 @@ interface BalanceCard {
             <button uiButton size="sm" (click)="openAdd('Work From Home')"><svg lucidePlus size="14"></svg> Add record</button>
           </ui-empty-state>
         } @else {
-          <ul class="divide-y divide-border">
+          <ul class="-my-1 divide-y divide-border">
             @for (r of recent(); track r.id) {
-              <li><button type="button" class="flex w-full items-center justify-between gap-3 py-2.5 text-left" (click)="openEdit(r)">
+              <li><button type="button" class="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-card-hover" (click)="openEdit(r)">
                 <span class="min-w-0">
                   <span class="block truncate text-sm font-medium">{{ r.title }}</span>
                   <span class="text-xs text-muted">{{ r.date | date: 'EEE, d MMM y' }} · {{ r.duration ?? 'Needs review' }}</span>
@@ -175,21 +154,23 @@ interface BalanceCard {
       </ui-card>
     </div>
 
-    <ui-card class="mt-4" title="Calendar" [description]="miniLabel()">
-      <div cardActions class="flex gap-1">
+    <ui-card class="mt-3 sm:mt-4" title="Calendar" [description]="miniLabel()">
+      <div cardActions class="-mt-1 -mr-1.5 flex gap-1">
         <button uiButton variant="ghost" size="icon" aria-label="Previous month" (click)="shiftMonth(-1)"><svg lucideChevronLeft size="16"></svg></button>
         <button uiButton variant="ghost" size="icon" aria-label="Next month" (click)="shiftMonth(1)"><svg lucideChevronRight size="16"></svg></button>
       </div>
-      <div class="grid grid-cols-7 gap-1 text-center text-[11px] text-muted">
+      <div class="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-muted-fg sm:gap-1">
         @for (d of weekdays; track d) { <span>{{ d }}</span> }
       </div>
-      <div class="mt-1 grid grid-cols-7 gap-1">
+      <div class="mt-1 grid grid-cols-7 gap-0.5 sm:gap-1">
         @for (day of miniDays(); track day.iso) {
           <button type="button"
-            class="flex h-11 flex-col items-center justify-center gap-1 rounded-md text-xs transition-colors hover:bg-card-hover"
-            [class]="day.inMonth ? 'text-foreground' : 'text-muted/40'"
+            class="flex h-10 flex-col items-center justify-center gap-0.5 rounded-lg text-xs tabular-nums transition-colors hover:bg-card-hover sm:h-11 sm:gap-1"
+            [class]="day.inMonth ? 'text-foreground' : 'text-muted-fg/50'"
             [class.ring-1]="day.iso === todayStr"
             [class.ring-accent]="day.iso === todayStr"
+            [class.font-semibold]="day.iso === todayStr"
+            [attr.aria-label]="'Add record on ' + day.iso"
             (click)="openAddOn(day.iso)">
             {{ day.date.getDate() }}
             <span class="flex h-1.5 gap-0.5">
@@ -232,7 +213,7 @@ export class DashboardPage {
   protected readonly defaultCategory = signal<LeaveCategory | null>(null);
   protected readonly defaultDate = signal<string | null>(null);
 
-  protected readonly cards = computed<BalanceCard[]>(() => {
+  protected readonly cards = computed<BalanceRow[]>(() => {
     const all = this.balances();
     return CATEGORIES.map((meta) => {
       const rows = all.filter((b) => b.category === meta.id);
@@ -242,6 +223,16 @@ export class DashboardPage {
         null;
       return { meta, balance: current };
     });
+  });
+
+  protected readonly subtitle = computed(() => {
+    const period = this.cards().find((c) => c.balance)?.balance;
+    if (!period) {
+      return this.todayLabel;
+    }
+    const start = format(fromIsoDate(period.period_start), 'd MMM y');
+    const end = format(fromIsoDate(period.period_end), 'd MMM y');
+    return `Leave year ${start} – ${end}`;
   });
 
   protected readonly warnings = computed(() =>

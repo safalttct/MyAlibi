@@ -25,30 +25,30 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
   imports: [ReactiveFormsModule, PageHeader, SettingsTabs, UiCard, UiButton, UiField, UiInput, UiSkeleton, UiConfirmDialog],
   template: `
     <app-page-header title="Settings" subtitle="Allocations per leave category and period" />
-    <app-settings-tabs class="mb-6" />
+    <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <ui-card class="mb-4">
       <div class="grid gap-4 sm:grid-cols-3">
         <ui-field label="Period start"><input uiInput type="date" [value]="periodStart()" (input)="periodStart.set(val($event))" /></ui-field>
         <ui-field label="Period end" [error]="periodError()"><input uiInput type="date" [value]="periodEnd()" (input)="periodEnd.set(val($event))" /></ui-field>
         <div class="flex items-end">
-          <button uiButton variant="outline" type="button" (click)="useFiscalYear()">Current fiscal year (Apr–Mar)</button>
+          <button uiButton variant="outline" type="button" class="max-sm:w-full" (click)="useFiscalYear()">Current fiscal year (Apr–Mar)</button>
         </div>
       </div>
     </ui-card>
 
     @if (error()) {
-      <p class="mb-4 text-sm text-danger" role="alert">{{ error() }}</p>
+      <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
     }
 
     @if (loading()) {
-      <div class="grid gap-4 lg:grid-cols-2">@for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-56" /> }</div>
+      <div class="grid gap-3 sm:gap-4 lg:grid-cols-2">@for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-56" /> }</div>
     } @else {
-      <div class="grid gap-4 lg:grid-cols-2">
+      <div class="grid gap-3 sm:gap-4 lg:grid-cols-2">
         @for (row of rows; track row.meta.id) {
           <ui-card>
             <form [formGroup]="row.form" (ngSubmit)="save(row)" class="grid gap-4">
-              <div class="flex items-center justify-between">
+              <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <h2 class="flex items-center gap-2 text-sm font-semibold">
                   <span class="size-2.5 rounded-full" [class]="row.meta.dotClass"></span>{{ row.meta.label }}
                 </h2>

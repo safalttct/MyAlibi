@@ -56,7 +56,7 @@ const STATE_LABEL: Record<PreviewRowState, string> = {
   ],
   template: `
     <app-page-header title="Settings" subtitle="Import, export and back up your data" />
-    <app-settings-tabs class="mb-6" />
+    <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <div class="grid gap-4">
       <ui-card title="Import CSV" description="Preview, validate and de-duplicate before anything is written.">
@@ -64,7 +64,7 @@ const STATE_LABEL: Record<PreviewRowState, string> = {
           <button uiButton variant="outline" size="sm" [loading]="busy() === 'preview'" (click)="previewBundled()">
             <svg lucideFileUp size="14"></svg> Preview bundled CSVs
           </button>
-          <label class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium hover:bg-card-hover">
+          <label class="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-card-hover sm:min-h-8">
             <svg lucideUpload size="14"></svg> Choose CSV files…
             <input type="file" accept=".csv,text/csv" multiple class="sr-only" (change)="previewFiles($event)" />
           </label>
@@ -142,7 +142,7 @@ const STATE_LABEL: Record<PreviewRowState, string> = {
         </ui-card>
 
         <ui-card title="Restore from backup" description="Upserts records, allocations, comp-off entries and settings from a JSON backup.">
-          <label class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium hover:bg-card-hover">
+          <label class="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-card-hover sm:min-h-8">
             <svg lucideUpload size="14"></svg> Choose backup file…
             <input type="file" accept="application/json,.json" class="sr-only" (change)="pickBackup($event)" />
           </label>

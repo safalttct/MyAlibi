@@ -4,15 +4,25 @@
   <meta charset="utf-8">
   <title>MyAlibi</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="MyAlibi - personal leave and WFH tracker">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="MyAlibi — personal leave and WFH tracker">
   <meta name="theme-color" content="#09090B">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" type="image/png" href="/assets/branding/myalibi-dark.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     try {
-      if (localStorage.getItem('myalibi-theme') === 'light') {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.classList.add('light');
+      var stored = localStorage.getItem('myalibi-theme');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.classList.toggle('light', theme === 'light');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      if (theme === 'light') {
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', '#FAFAFC');
       }
     } catch (e) {}
   </script>

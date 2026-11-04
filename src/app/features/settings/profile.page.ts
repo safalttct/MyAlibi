@@ -27,7 +27,7 @@ function timezones(current: string): string[] {
   imports: [ReactiveFormsModule, PageHeader, SettingsTabs, UiCard, UiButton, UiField, UiInput, UiSelect, UiSkeleton],
   template: `
     <app-page-header title="Settings" subtitle="Your profile" />
-    <app-settings-tabs class="mb-6" />
+    <app-settings-tabs class="mb-5 sm:mb-6" />
 
     <ui-card class="max-w-xl">
       @if (loading()) {
@@ -43,10 +43,10 @@ function timezones(current: string): string[] {
             </select>
           </ui-field>
           @if (error()) {
-            <p class="text-sm text-danger" role="alert">{{ error() }}</p>
+            <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
           }
           <div class="flex justify-end">
-            <button uiButton type="submit" [loading]="saving()">Save profile</button>
+            <button uiButton type="submit" class="max-sm:w-full" [loading]="saving()">Save profile</button>
           </div>
         </form>
       }

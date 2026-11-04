@@ -52,38 +52,38 @@ const TYPE_LABEL: Record<CompOffType, string> = {
     LucideTrash2,
   ],
   template: `
-    <app-page-header title="Comp Off" subtitle="Earn, use and adjust compensatory leave. The ledger is the source of truth.">
+    <app-page-header title="Comp Off" subtitle="Earn, use and adjust compensatory leave">
       <button uiButton size="sm" (click)="openForm('earned')"><svg lucidePlus size="14"></svg> Earn</button>
       <button uiButton variant="outline" size="sm" (click)="openForm('used')"><svg lucideMinus size="14"></svg> Use</button>
       <button uiButton variant="outline" size="sm" (click)="openForm('adjustment')"><svg lucideSlidersHorizontal size="14"></svg> Adjust</button>
     </app-page-header>
 
     @if (error()) {
-      <p class="mb-4 text-sm text-danger" role="alert">{{ error() }}</p>
+      <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
     }
 
-    <section class="mb-4 grid gap-4 sm:grid-cols-4">
-      <ui-card><p class="text-xs text-muted">Available</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums" [class]="summary().remaining < 0 ? 'text-danger' : 'text-comp'">{{ summary().remaining }}</p></ui-card>
-      <ui-card><p class="text-xs text-muted">Credited</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ summary().earned }}</p></ui-card>
-      <ui-card><p class="text-xs text-muted">Used</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ summary().used }}</p></ui-card>
-      <ui-card><p class="text-xs text-muted">Expiring in 30 days</p><p class="mt-1 text-2xl font-semibold tabular-nums text-warning">{{ summary().expiring }}</p></ui-card>
+    <section class="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <ui-card><p class="text-xs font-medium text-muted">Available</p>
+        <p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums" [class]="summary().remaining < 0 ? 'text-danger' : 'text-comp'">{{ summary().remaining }}</p></ui-card>
+      <ui-card><p class="text-xs font-medium text-muted">Credited</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{{ summary().earned }}</p></ui-card>
+      <ui-card><p class="text-xs font-medium text-muted">Used</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{{ summary().used }}</p></ui-card>
+      <ui-card><p class="text-xs font-medium text-muted">Expiring in 30 days</p><p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-warning">{{ summary().expiring }}</p></ui-card>
     </section>
 
     <ui-card title="Ledger" description="Newest first, with running balance" [padded]="false">
       @if (loading()) {
-        <div class="space-y-2 p-4">@for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-10" /> }</div>
+        <div class="space-y-2 p-3 sm:p-4">@for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-14 md:h-10" /> }</div>
       } @else if (ledger().length === 0) {
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <ui-empty-state title="No comp-off activity" description="Record the days you earned to start the ledger.">
             <button uiButton size="sm" (click)="openForm('earned')"><svg lucidePlus size="14"></svg> Earn comp off</button>
           </ui-empty-state>
         </div>
       } @else {
-        <div class="overflow-x-auto">
+        <div class="hidden overflow-x-auto md:block">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-y border-border text-left text-xs text-muted">
+              <tr class="border-y border-border bg-elevated/40 text-left text-xs text-muted">
                 <th class="px-4 py-3 font-medium">Date</th>
                 <th class="px-4 py-3 font-medium">Type</th>
                 <th class="px-4 py-3 text-right font-medium">Days</th>
@@ -98,7 +98,7 @@ const TYPE_LABEL: Record<CompOffType, string> = {
                 <tr class="border-b border-border/60 text-muted"><td class="px-4 py-3" colspan="3">Opening balance</td><td class="px-4 py-3 text-right tabular-nums">{{ opening() }}</td><td colspan="3"></td></tr>
               }
               @for (row of ledgerDesc(); track row.transaction.id) {
-                <tr class="border-b border-border/60 last:border-0 hover:bg-card-hover">
+                <tr class="border-b border-border/60 transition-colors last:border-0 hover:bg-card-hover">
                   <td class="px-4 py-3 whitespace-nowrap">{{ row.transaction.transaction_date | date: 'd MMM y' }}</td>
                   <td class="px-4 py-3">
                     <ui-badge [tone]="row.transaction.type === 'earned' ? 'success' : row.transaction.type === 'used' ? 'info' : 'neutral'">{{ row.transaction.type }}</ui-badge>
@@ -125,6 +125,37 @@ const TYPE_LABEL: Record<CompOffType, string> = {
             </tbody>
           </table>
         </div>
+
+        <ul class="divide-y divide-border md:hidden">
+          @if (opening() !== 0) {
+            <li class="flex items-center justify-between px-4 py-3 text-sm text-muted">
+              <span>Opening balance</span><span class="tabular-nums">{{ opening() }}</span>
+            </li>
+          }
+          @for (row of ledgerDesc(); track row.transaction.id) {
+            <li class="flex items-start justify-between gap-2 py-3 pr-1 pl-4">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <ui-badge [tone]="row.transaction.type === 'earned' ? 'success' : row.transaction.type === 'used' ? 'info' : 'neutral'">{{ row.transaction.type }}</ui-badge>
+                  <span class="text-sm font-medium tabular-nums" [class]="row.delta < 0 ? 'text-danger' : row.delta > 0 ? 'text-success' : 'text-muted'">
+                    {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}d
+                  </span>
+                  @if (row.expired) { <ui-badge tone="danger">expired</ui-badge> }
+                </div>
+                <p class="mt-1 text-xs text-muted">
+                  {{ row.transaction.transaction_date | date: 'd MMM y' }}
+                  @if (row.transaction.expiry_date) { · expires {{ row.transaction.expiry_date | date: 'd MMM y' }} }
+                  · balance <span class="font-medium tabular-nums" [class]="row.running < 0 ? 'text-danger' : 'text-foreground'">{{ row.running }}</span>
+                </p>
+                @if (row.transaction.notes) { <p class="mt-0.5 truncate text-xs text-muted">{{ row.transaction.notes }}</p> }
+                @if (row.transaction.leave_record_id) { <p class="mt-0.5 text-xs text-muted">via leave record</p> }
+              </div>
+              @if (!row.transaction.leave_record_id) {
+                <button uiButton variant="ghost" size="icon" class="shrink-0 hover:text-danger" aria-label="Delete entry" (click)="deleting.set(row.transaction)"><svg lucideTrash2 size="16"></svg></button>
+              }
+            </li>
+          }
+        </ul>
       }
     </ui-card>
 

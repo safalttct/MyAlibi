@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { AppLogo } from '../../shared/components/app-logo';
 import { AuthService } from '../../core/services/auth.service';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiField } from '../../shared/ui/ui-field';
@@ -12,47 +13,45 @@ type Mode = 'signin' | 'signup';
 @Component({
   selector: 'app-login-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, UiButton, UiField, UiInput],
+  imports: [ReactiveFormsModule, AppLogo, UiButton, UiField, UiInput],
   template: `
-    <div class="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
+    <div class="flex min-h-dvh items-center justify-center bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
       @if (!configured) {
-        <section class="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
-          <h1 class="text-xl font-semibold text-foreground">Supabase not configured</h1>
-          <p class="mt-3 text-sm text-muted">
-            MyAlibi needs <code class="rounded bg-background px-1 py-0.5">NG_APP_SUPABASE_URL</code> and
-            <code class="rounded bg-background px-1 py-0.5">NG_APP_SUPABASE_PUBLISHABLE_KEY</code>.
+        <section class="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
+          <div class="mb-5 flex justify-center"><app-logo size="lg" /></div>
+          <h1 class="text-lg font-semibold tracking-tight text-foreground">Supabase not configured</h1>
+          <p class="mt-2 text-sm text-muted">
+            Set <code class="rounded bg-elevated px-1 py-0.5 text-xs">NG_APP_SUPABASE_URL</code> and
+            <code class="rounded bg-elevated px-1 py-0.5 text-xs">NG_APP_SUPABASE_PUBLISHABLE_KEY</code>.
           </p>
-          <ol class="mx-auto mt-4 max-w-xs list-decimal space-y-1 pl-5 text-left text-sm text-muted">
-            <li>Local: copy <code>.env.example</code> to <code>.env</code> and fill the keys</li>
-            <li>Vercel: set <code>NG_APP_SUPABASE_URL</code> and <code>NG_APP_SUPABASE_PUBLISHABLE_KEY</code> (or the Supabase integration vars) and redeploy</li>
-            <li>Run <code>pnpm start</code> locally, or open the new Vercel deployment</li>
+          <ol class="mx-auto mt-5 max-w-sm list-decimal space-y-2 pl-5 text-left text-sm text-muted">
+            <li>Local: copy <code class="text-xs">.env.example</code> to <code class="text-xs">.env</code> and fill in the keys.</li>
+            <li>Vercel: add both variables under Project Settings → Environment Variables, then redeploy.</li>
+            <li>Run <code class="text-xs">pnpm start</code> locally, or open the new deployment.</li>
           </ol>
         </section>
       } @else {
         <section class="w-full max-w-sm">
-          <div class="mb-6 flex flex-col items-center gap-3 text-center">
-            <span class="flex size-11 items-center justify-center rounded-xl bg-accent text-lg font-bold text-accent-foreground">M</span>
-            <div>
-              <h1 class="text-xl font-semibold tracking-tight text-foreground">MyAlibi</h1>
-              <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
-            </div>
+          <div class="mb-7 flex flex-col items-center gap-3 text-center">
+            <app-logo size="lg" />
+            <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
           </div>
 
-          <div class="rounded-2xl border border-border bg-card p-6 shadow-xl">
-            <div class="mb-5 grid grid-cols-2 rounded-lg border border-border bg-background p-1 text-sm font-medium" role="tablist">
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <div class="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 text-sm font-medium" role="tablist">
               <button type="button" role="tab" [attr.aria-selected]="mode() === 'signin'"
-                class="rounded-md py-1.5 transition-colors"
-                [class]="mode() === 'signin' ? 'bg-card-hover text-foreground' : 'text-muted'"
+                class="min-h-10 rounded-lg transition-colors"
+                [class]="mode() === 'signin' ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted hover:text-foreground'"
                 (click)="setMode('signin')">Sign in</button>
               <button type="button" role="tab" [attr.aria-selected]="mode() === 'signup'"
-                class="rounded-md py-1.5 transition-colors"
-                [class]="mode() === 'signup' ? 'bg-card-hover text-foreground' : 'text-muted'"
+                class="min-h-10 rounded-lg transition-colors"
+                [class]="mode() === 'signup' ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted hover:text-foreground'"
                 (click)="setMode('signup')">Create account</button>
             </div>
 
             <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4" novalidate>
               <ui-field label="Email" [error]="fieldError('email')">
-                <input uiInput type="email" formControlName="email" autocomplete="email" placeholder="you@example.com" />
+                <input uiInput type="email" formControlName="email" autocomplete="email" inputmode="email" placeholder="you@example.com" />
               </ui-field>
               <ui-field label="Password" [error]="fieldError('password')">
                 <input uiInput type="password" formControlName="password"
@@ -67,7 +66,7 @@ type Mode = 'signin' | 'signup';
                 <p class="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success" role="status">{{ info() }}</p>
               }
 
-              <button uiButton type="submit" size="lg" [loading]="busy()">
+              <button uiButton type="submit" size="lg" class="mt-1 w-full" [loading]="busy()">
                 {{ mode() === 'signin' ? 'Sign in' : 'Create account' }}
               </button>
             </form>

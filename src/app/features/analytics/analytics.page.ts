@@ -28,34 +28,34 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
   imports: [PageHeader, UiCard, UiSelect, UiSkeleton, UiProgress, UiEmptyState, UiBarChart, UiLineChart],
   template: `
     <app-page-header title="Analytics" [subtitle]="periodLabel()">
-      <select uiSelect class="w-40" aria-label="Period type" [value]="mode()" (change)="setMode($event)">
+      <select uiSelect class="w-full sm:w-40" aria-label="Period type" [value]="mode()" (change)="setMode($event)">
         <option value="fiscal">Fiscal (Apr–Mar)</option>
         <option value="calendar">Calendar year</option>
       </select>
-      <select uiSelect class="w-32" aria-label="Year" (change)="setYear($event)">
+      <select uiSelect class="w-full sm:w-32" aria-label="Year" (change)="setYear($event)">
         @for (y of years; track y) { <option [value]="y" [selected]="y === year()">{{ mode() === 'fiscal' ? y + '–' + (y + 1) : y }}</option> }
       </select>
     </app-page-header>
 
     @if (error()) {
-      <p class="mb-4 text-sm text-danger" role="alert">{{ error() }}</p>
+      <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
     }
 
     @if (loading()) {
-      <div class="grid gap-4 lg:grid-cols-2">
-        @for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-72" /> }
+      <div class="grid gap-3 sm:gap-4 lg:grid-cols-2">
+        @for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-60 sm:h-72" /> }
       </div>
     } @else {
-      <section class="mb-4 grid gap-4 sm:grid-cols-3">
-        <ui-card><p class="text-xs text-muted">WFH days</p><p class="mt-1 text-2xl font-semibold text-wfh tabular-nums">{{ totals().wfh }}</p></ui-card>
-        <ui-card><p class="text-xs text-muted">Leave days</p><p class="mt-1 text-2xl font-semibold text-casual tabular-nums">{{ totals().leave }}</p></ui-card>
-        <ui-card><p class="text-xs text-muted">Busiest month</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ totals().busiest }}</p></ui-card>
+      <section class="mb-4 grid grid-cols-3 gap-2.5 sm:gap-4">
+        <ui-card><p class="text-xs font-medium text-muted">WFH days</p><p class="mt-1 text-xl sm:text-2xl font-semibold text-wfh tabular-nums">{{ totals().wfh }}</p></ui-card>
+        <ui-card><p class="text-xs font-medium text-muted">Leave days</p><p class="mt-1 text-xl sm:text-2xl font-semibold text-casual tabular-nums">{{ totals().leave }}</p></ui-card>
+        <ui-card><p class="text-xs font-medium text-muted">Busiest</p><p class="mt-1 text-xl sm:text-2xl font-semibold tabular-nums">{{ totals().busiest }}</p></ui-card>
       </section>
 
       @if (rows().length === 0 && previousRows().length === 0) {
         <ui-empty-state title="No usage in this period" description="Add records or pick another period." />
       } @else {
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid gap-3 sm:gap-4 lg:grid-cols-2">
           <ui-card title="Monthly usage" description="Days per month, by category" class="lg:col-span-2">
             <ui-bar-chart [labels]="monthLabels()" [series]="monthlySeries()" [stacked]="true" ariaLabel="Monthly usage by category" />
           </ui-card>

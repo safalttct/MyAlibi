@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class:
-      'block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground ' +
+      'block w-full rounded-lg border border-border bg-background h-11 px-3 text-sm sm:h-10 text-foreground ' +
       'transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 ' +
       'disabled:cursor-not-allowed disabled:opacity-50',
   },

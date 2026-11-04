@@ -4,7 +4,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'dan
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors ' +
+  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors active:scale-[0.98] ' +
   'select-none whitespace-nowrap disabled:pointer-events-none disabled:opacity-50';
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -16,10 +16,10 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-xs',
-  md: 'h-9 px-4 text-sm',
-  lg: 'h-10 px-5 text-sm',
-  icon: 'size-9 p-0',
+  sm: 'h-10 px-3.5 text-xs sm:h-8 sm:px-3',
+  md: 'h-11 px-4 text-sm sm:h-9',
+  lg: 'h-11 px-5 text-sm sm:h-10',
+  icon: 'size-11 p-0 sm:size-9',
 };
 
 @Component({

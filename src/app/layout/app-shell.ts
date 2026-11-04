@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
@@ -11,24 +10,28 @@ import {
   LucideSettings,
   LucideSun,
   LucideTimer,
+  LucideUserRound,
 } from '@lucide/angular';
 import { AuthService } from '../core/services/auth.service';
 import { ThemeService } from '../core/services/theme.service';
+import { AppLogo } from '../shared/components/app-logo';
 
 interface NavItem {
   path: string;
   label: string;
+  short: string;
   icon: 'dashboard' | 'records' | 'calendar' | 'analytics' | 'compoff' | 'settings';
+  mobile?: boolean;
 }
 
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgTemplateOutlet,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
+    AppLogo,
     LucideLayoutDashboard,
     LucideListChecks,
     LucideCalendar,
@@ -38,54 +41,75 @@ interface NavItem {
     LucideSun,
     LucideMoon,
     LucideLogOut,
+    LucideUserRound,
   ],
   template: `
-    <ng-template #navIcon let-name let-size="size">
-      @switch (name) {
-        @case ('dashboard') { <svg lucideLayoutDashboard [size]="size"></svg> }
-        @case ('records') { <svg lucideListChecks [size]="size"></svg> }
-        @case ('calendar') { <svg lucideCalendar [size]="size"></svg> }
-        @case ('analytics') { <svg lucideChartColumn [size]="size"></svg> }
-        @case ('compoff') { <svg lucideTimer [size]="size"></svg> }
-        @case ('settings') { <svg lucideSettings [size]="size"></svg> }
-      }
-    </ng-template>
-
     <div class="min-h-dvh bg-background text-foreground">
       <!-- Desktop sidebar -->
       <aside
-        class="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-sidebar md:flex"
+        class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-sidebar md:flex"
+        aria-label="Application"
       >
-        <div class="flex items-center gap-2.5 px-5 py-5">
-          <span class="flex size-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">M</span>
-          <span class="text-base font-semibold tracking-tight">MyAlibi</span>
+        <div class="flex h-16 items-center px-5">
+          <a routerLink="/dashboard" class="outline-none">
+            <app-logo size="md" />
+          </a>
         </div>
 
-        <nav class="flex flex-1 flex-col gap-1 px-3" aria-label="Primary">
-          @for (item of nav; track item.path) {
+        <nav class="flex flex-1 flex-col gap-0.5 px-3 pb-3" aria-label="Primary">
+          @for (item of primaryNav; track item.path) {
             <a
               [routerLink]="item.path"
-              routerLinkActive="bg-accent/15 text-accent"
-              class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-card-hover hover:text-foreground"
+              routerLinkActive="bg-accent-soft text-accent"
+              [routerLinkActiveOptions]="item.path === '/settings' ? { exact: false } : { exact: true }"
+              class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-foreground"
             >
-              <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item.icon, size: 18 }" />
+              <span class="text-current opacity-80 group-[.bg-accent-soft]:opacity-100">
+                @switch (item.icon) {
+                  @case ('dashboard') { <svg lucideLayoutDashboard size="18" strokeWidth="1.75"></svg> }
+                  @case ('records') { <svg lucideListChecks size="18" strokeWidth="1.75"></svg> }
+                  @case ('calendar') { <svg lucideCalendar size="18" strokeWidth="1.75"></svg> }
+                  @case ('analytics') { <svg lucideChartColumn size="18" strokeWidth="1.75"></svg> }
+                  @case ('compoff') { <svg lucideTimer size="18" strokeWidth="1.75"></svg> }
+                  @case ('settings') { <svg lucideSettings size="18" strokeWidth="1.75"></svg> }
+                }
+              </span>
               {{ item.label }}
             </a>
           }
         </nav>
 
-        <div class="flex items-center justify-between gap-2 border-t border-border p-3">
-          <p class="truncate text-xs text-muted" [title]="auth.user()?.email ?? ''">
-            {{ auth.user()?.email }}
-          </p>
-          <div class="flex shrink-0 gap-1">
-            <button type="button" class="rounded-md p-2 text-muted hover:bg-card-hover hover:text-foreground"
+        <div class="space-y-2 border-t border-border p-3">
+          <div class="flex items-center gap-2 rounded-lg bg-elevated/60 px-2.5 py-2">
+            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <svg lucideUserRound size="16"></svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-xs font-medium text-foreground" [title]="auth.user()?.email ?? ''">
+                {{ auth.user()?.email }}
+              </p>
+              <p class="text-[11px] text-muted-fg">Signed in</p>
+            </div>
+          </div>
+          <div class="flex gap-1">
+            <button
+              type="button"
+              class="touch-target flex-1 rounded-lg text-muted transition-colors hover:bg-elevated hover:text-foreground"
               [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-              (click)="theme.toggle()">
-              @if (theme.theme() === 'dark') { <svg lucideSun size="16"></svg> } @else { <svg lucideMoon size="16"></svg> }
+              (click)="theme.toggle()"
+            >
+              @if (theme.theme() === 'dark') {
+                <svg lucideSun size="16"></svg>
+              } @else {
+                <svg lucideMoon size="16"></svg>
+              }
             </button>
-            <button type="button" class="rounded-md p-2 text-muted hover:bg-card-hover hover:text-foreground"
-              aria-label="Sign out" (click)="auth.signOut()">
+            <button
+              type="button"
+              class="touch-target flex-1 rounded-lg text-muted transition-colors hover:bg-elevated hover:text-foreground"
+              aria-label="Sign out"
+              (click)="auth.signOut()"
+            >
               <svg lucideLogOut size="16"></svg>
             </button>
           </div>
@@ -94,44 +118,63 @@ interface NavItem {
 
       <!-- Mobile top bar -->
       <header
-        class="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-sidebar/95 px-4 py-3 backdrop-blur md:hidden"
+        class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-sidebar/90 px-4 backdrop-blur-md md:hidden"
       >
-        <div class="flex items-center gap-2">
-          <span class="flex size-7 items-center justify-center rounded-md bg-accent text-xs font-bold text-accent-foreground">M</span>
-          <span class="font-semibold tracking-tight">MyAlibi</span>
-        </div>
-        <div class="flex gap-1">
-          <button type="button" class="rounded-md p-2 text-muted hover:bg-card-hover"
+        <a routerLink="/dashboard" class="outline-none">
+          <app-logo size="sm" />
+        </a>
+        <div class="flex items-center gap-0.5">
+          <a
+            routerLink="/settings/profile"
+            class="touch-target rounded-lg text-muted hover:bg-elevated hover:text-foreground"
+            aria-label="Profile and settings"
+          >
+            <svg lucideSettings size="18" strokeWidth="1.75"></svg>
+          </a>
+          <button
+            type="button"
+            class="touch-target rounded-lg text-muted hover:bg-elevated hover:text-foreground"
             [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-            (click)="theme.toggle()">
-            @if (theme.theme() === 'dark') { <svg lucideSun size="18"></svg> } @else { <svg lucideMoon size="18"></svg> }
-          </button>
-          <button type="button" class="rounded-md p-2 text-muted hover:bg-card-hover" aria-label="Sign out"
-            (click)="auth.signOut()">
-            <svg lucideLogOut size="18"></svg>
+            (click)="theme.toggle()"
+          >
+            @if (theme.theme() === 'dark') {
+              <svg lucideSun size="18"></svg>
+            } @else {
+              <svg lucideMoon size="18"></svg>
+            }
           </button>
         </div>
       </header>
 
-      <main class="mx-auto w-full max-w-6xl px-4 pt-5 pb-24 sm:px-6 md:ml-60 md:max-w-none md:px-8 md:pt-8 md:pb-10">
-        <div class="mx-auto max-w-6xl"><router-outlet /></div>
+      <main class="md:ml-60">
+        <div class="page-shell safe-pb-nav px-4 pt-5 sm:px-6 md:px-8 md:pt-8 md:pb-10">
+          <router-outlet />
+        </div>
       </main>
 
-      <!-- Mobile bottom nav -->
+      <!-- Mobile bottom navigation -->
       <nav
-        class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-border bg-sidebar/95 backdrop-blur md:hidden"
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur-md md:hidden"
+        style="padding-bottom: var(--safe-bottom)"
         aria-label="Primary mobile"
       >
-        @for (item of nav; track item.path) {
-          <a
-            [routerLink]="item.path"
-            routerLinkActive="text-accent"
-            class="flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium text-muted"
-          >
-            <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item.icon, size: 20 }" />
-            {{ item.label }}
-          </a>
-        }
+        <div class="grid h-16 grid-cols-4">
+          @for (item of mobileNav; track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="text-accent"
+              class="flex flex-col items-center justify-center gap-1 text-[10px] font-medium text-muted transition-colors"
+            >
+              @switch (item.icon) {
+                @case ('dashboard') { <svg lucideLayoutDashboard size="20" strokeWidth="1.75"></svg> }
+                @case ('records') { <svg lucideListChecks size="20" strokeWidth="1.75"></svg> }
+                @case ('calendar') { <svg lucideCalendar size="20" strokeWidth="1.75"></svg> }
+                @case ('analytics') { <svg lucideChartColumn size="20" strokeWidth="1.75"></svg> }
+              }
+              <span>{{ item.short }}</span>
+            </a>
+          }
+        </div>
       </nav>
     </div>
   `,
@@ -140,12 +183,14 @@ export class AppShell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly nav: readonly NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { path: '/records', label: 'Records', icon: 'records' },
-    { path: '/calendar', label: 'Calendar', icon: 'calendar' },
-    { path: '/analytics', label: 'Analytics', icon: 'analytics' },
-    { path: '/comp-off', label: 'Comp Off', icon: 'compoff' },
-    { path: '/settings', label: 'Settings', icon: 'settings' },
+  protected readonly primaryNav: readonly NavItem[] = [
+    { path: '/dashboard', label: 'Dashboard', short: 'Home', icon: 'dashboard', mobile: true },
+    { path: '/records', label: 'Records', short: 'Records', icon: 'records', mobile: true },
+    { path: '/calendar', label: 'Calendar', short: 'Calendar', icon: 'calendar', mobile: true },
+    { path: '/analytics', label: 'Analytics', short: 'Analytics', icon: 'analytics', mobile: true },
+    { path: '/comp-off', label: 'Comp Off', short: 'Comp', icon: 'compoff' },
+    { path: '/settings', label: 'Settings', short: 'Settings', icon: 'settings' },
   ];
+
+  protected readonly mobileNav = this.primaryNav.filter((n) => n.mobile);
 }

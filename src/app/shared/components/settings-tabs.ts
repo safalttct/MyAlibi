@@ -7,12 +7,12 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   imports: [RouterLink, RouterLinkActive],
   host: { class: 'block' },
   template: `
-    <nav class="flex gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1" aria-label="Settings">
+    <nav class="flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1" aria-label="Settings">
       @for (tab of tabs; track tab.path) {
         <a
           [routerLink]="tab.path"
-          routerLinkActive="bg-accent/15 text-accent"
-          class="rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted transition-colors hover:text-foreground"
+          routerLinkActive="bg-accent-soft text-accent"
+          class="flex min-h-10 flex-1 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted transition-colors hover:text-foreground sm:flex-none"
         >
           {{ tab.label }}
         </a>

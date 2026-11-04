@@ -9,8 +9,7 @@ const STORAGE_KEY = 'myalibi-theme';
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
 
-  /** Dark is the default theme. */
-  readonly theme = signal<Theme>(this.readStored());
+  readonly theme = signal<Theme>(this.readInitial());
 
   constructor() {
     effect(() => {
@@ -18,10 +17,15 @@ export class ThemeService {
       const root = this.document.documentElement;
       root.classList.toggle('light', theme === 'light');
       root.classList.toggle('dark', theme === 'dark');
+      root.style.colorScheme = theme;
+      const meta = this.document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', theme === 'light' ? '#FAFAFC' : '#09090B');
+      }
       try {
         localStorage.setItem(STORAGE_KEY, theme);
       } catch {
-        /* storage unavailable (private mode) */
+        /* private mode */
       }
     });
   }
@@ -30,11 +34,22 @@ export class ThemeService {
     this.theme.update((t) => (t === 'dark' ? 'light' : 'dark'));
   }
 
-  private readStored(): Theme {
+  set(theme: Theme): void {
+    this.theme.set(theme);
+  }
+
+  private readInitial(): Theme {
     try {
-      return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === 'light' || stored === 'dark') {
+        return stored;
+      }
     } catch {
-      return 'dark';
+      /* ignore */
     }
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
+    }
+    return 'dark';
   }
 }

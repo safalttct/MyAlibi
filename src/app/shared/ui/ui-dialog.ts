@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { LucideX } from '@lucide/angular';
 
-/** Simple accessible modal: backdrop, Escape to close, scrollable body, footer slot. */
+/**
+ * Accessible modal. Near full-screen sheet on mobile, centered card from `sm`.
+ * Backdrop, Escape to close, scrollable body, footer slot, safe-area padding.
+ */
 @Component({
   selector: 'ui-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -12,7 +15,7 @@ import { LucideX } from '@lucide/angular';
       <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
         <button
           type="button"
-          class="absolute inset-0 cursor-default bg-black/60 backdrop-blur-sm"
+          class="absolute inset-0 cursor-default bg-overlay backdrop-blur-sm"
           aria-label="Close dialog"
           tabindex="-1"
           (click)="closed.emit()"
@@ -21,27 +24,29 @@ import { LucideX } from '@lucide/angular';
           role="dialog"
           aria-modal="true"
           [attr.aria-label]="title()"
-          class="relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-2xl sm:rounded-2xl"
+          class="relative flex max-h-[96dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl"
           [class]="widthClass()"
         >
-          <header class="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-            <div>
-              <h2 class="text-base font-semibold text-foreground">{{ title() }}</h2>
+          <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5 sm:py-4">
+            <div class="min-w-0">
+              <h2 class="text-base font-semibold tracking-tight text-foreground">{{ title() }}</h2>
               @if (description()) {
                 <p class="mt-0.5 text-xs text-muted">{{ description() }}</p>
               }
             </div>
             <button
               type="button"
-              class="rounded-md p-1 text-muted transition-colors hover:bg-card-hover hover:text-foreground"
+              class="-mr-2 -mt-1.5 touch-target rounded-lg text-muted transition-colors hover:bg-card-hover hover:text-foreground sm:-mt-1 sm:min-h-9 sm:min-w-9"
               aria-label="Close"
               (click)="closed.emit()"
             >
               <svg lucideX size="18"></svg>
             </button>
           </header>
-          <div class="overflow-y-auto px-5 py-4"><ng-content /></div>
-          <footer class="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3 empty:hidden">
+          <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5"><ng-content /></div>
+          <footer
+            class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3 pb-[max(0.75rem,var(--safe-bottom))] sm:px-5 empty:hidden"
+          >
             <ng-content select="[dialogFooter]" />
           </footer>
         </div>
@@ -57,7 +62,7 @@ export class UiDialog {
   readonly closed = output<void>();
 
   protected widthClass(): string {
-    return { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' }[this.size()];
+    return { sm: 'sm:max-w-sm', md: 'sm:max-w-md', lg: 'sm:max-w-2xl' }[this.size()];
   }
 
   protected onEscape(): void {
