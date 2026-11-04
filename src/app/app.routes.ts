@@ -12,6 +12,12 @@ export const routes: Routes = [
     component: LoginPage,
   },
   {
+    path: 'share/hr/:token',
+    title: 'HR review · MyAlibi',
+    loadComponent: () =>
+      import('./features/share/hr-share-view.page').then((m) => m.HrShareViewPage),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     component: AppShell,
@@ -53,6 +59,12 @@ export const routes: Routes = [
           import('./features/settings/allocation-settings.page').then(
             (m) => m.AllocationSettingsPage,
           ),
+      },
+      {
+        path: 'settings/share',
+        title: 'Share to HR · MyAlibi',
+        loadComponent: () =>
+          import('./features/settings/hr-share.page').then((m) => m.HrSharePage),
       },
       {
         path: 'settings/profile',

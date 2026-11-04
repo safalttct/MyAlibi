@@ -38,8 +38,13 @@
   --overlay: rgb(0 0 0 / 0.55);
 
   --wfh: #3b82f6;
-  --casual: #f59e0b;
+  --annual: #f59e0b;
+  --casual: #f59e0b; /* legacy alias → annual */
   --sick: #f43f5e;
+  --maternity: #ec4899;
+  --paternity: #06b6d4;
+  --emergency: #f97316;
+  --lop: #a1a1aa;
   --comp: #8b5cf6;
   --carry: #10b981;
 
@@ -78,8 +83,13 @@
   --overlay: rgb(24 24 27 / 0.4);
 
   --wfh: #2563eb;
+  --annual: #d97706;
   --casual: #d97706;
   --sick: #e11d48;
+  --maternity: #db2777;
+  --paternity: #0891b2;
+  --emergency: #ea580c;
+  --lop: #71717a;
   --comp: #7c3aed;
   --carry: #059669;
 }
@@ -119,8 +129,13 @@
   --color-danger: var(--destructive);
 
   --color-wfh: var(--wfh);
+  --color-annual: var(--annual);
   --color-casual: var(--casual);
   --color-sick: var(--sick);
+  --color-maternity: var(--maternity);
+  --color-paternity: var(--paternity);
+  --color-emergency: var(--emergency);
+  --color-lop: var(--lop);
   --color-comp: var(--comp);
   --color-carry: var(--carry);
 

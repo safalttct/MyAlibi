@@ -1,6 +1,6 @@
 const RELOAD_KEY = 'myalibi:chunk-reload';
 
-function isChunkLoadError(reason: unknown): boolean {
+export function isChunkLoadError(reason: unknown): boolean {
   const message =
     reason instanceof Error
       ? reason.message
@@ -14,8 +14,17 @@ function isChunkLoadError(reason: unknown): boolean {
     /Failed to fetch dynamically imported module/i.test(message) ||
     /Importing a module script failed/i.test(message) ||
     /error loading dynamically imported module/i.test(message) ||
+    /Loading chunk [\w-]+ failed/i.test(message) ||
     /ChunkLoadError/i.test(message)
   );
+}
+
+/** Full navigation recovers from a stale Vite/Angular lazy chunk after rebuild. */
+export function recoverFromStaleChunk(path = '/dashboard'): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.location.assign(path);
 }
 
 /**

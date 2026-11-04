@@ -1,0 +1,38 @@
+---
+description: When the user says deploy — bump package.json version, push main, ship to Vercel
+alwaysApply: true
+---
+
+# Deploy workflow
+
+When the user says **deploy** (or “ship”, “release”, “push to prod”), run this end-to-end. Do not ask for confirmation of the steps unless something is blocked (auth, conflicts, dirty secrets).
+
+## 1. Version bump
+
+- Read `package.json` `version` (semver `MAJOR.MINOR.PATCH`).
+- Default: bump **PATCH** (`1.0.0` → `1.0.1`).
+- If the user says **minor** / **major**, bump that segment and reset lower ones.
+- Write the new version back to `package.json` only (footer picks it up via `scripts/set-env.mjs` on build).
+
+## 2. Commit
+
+- `git status`, `git diff`, and recent `git log` first (follow the repo commit protocol).
+- Stage relevant project changes **and** `package.json`. Never stage `.env`, `environment.generated.ts`, or secrets.
+- Commit with a message like: `release: vX.Y.Z` (include a short why if other feature commits are included).
+- Only create the commit as part of deploy when the user asked to deploy (that counts as an explicit commit request for this workflow).
+
+## 3. Push to main
+
+- Ensure branch is `main` (or merge/rebase onto `main` if the user is on a feature branch and asked to deploy — prefer staying on `main` for this app).
+- `git push -u origin HEAD` to `origin` (`https://github.com/safalttct/MyAlibi.git`).
+- Do **not** force-push to `main`.
+
+## 4. Vercel
+
+- Production deploys from **GitHub → Vercel** on push to `main` (`vercel.json` + env vars `NG_APP_SUPABASE_*`).
+- After a successful push, tell the user Vercel will build production automatically.
+- If `vercel` CLI is available and the project is linked, you may also run `vercel --prod` and report the URL; otherwise do not install the CLI unless asked.
+
+## 5. Reply
+
+Report: new version, commit hash/message, push result, and that Vercel production deploy was triggered (or the CLI URL if used).

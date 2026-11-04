@@ -10,6 +10,8 @@ export interface AppEnvironment {
   readonly supabaseUrl: string;
   readonly supabasePublishableKey: string;
   readonly configured: boolean;
+  /** Mirrors `version` from package.json (injected by set-env.mjs). */
+  readonly version: string;
 }
 
 export const environment: AppEnvironment = generated;

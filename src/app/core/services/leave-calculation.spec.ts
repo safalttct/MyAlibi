@@ -37,12 +37,12 @@ describe('leave calculation', () => {
 
   it('computes balances and excludes needs_review records', () => {
     const [casual] = computeBalances(
-      [allocation('Casual Leave', 12)],
+      [allocation('Annual Leave', 12)],
       [
-        record('Casual Leave', '2026-05-01', 'Full Day'),
-        record('Casual Leave', '2026-05-02', 'Half Day'),
-        record('Casual Leave', '2026-05-03', null, 'needs_review'),
-        record('Casual Leave', '2025-01-01', 'Full Day'), // outside the period
+        record('Annual Leave', '2026-05-01', 'Full Day'),
+        record('Annual Leave', '2026-05-02', 'Half Day'),
+        record('Annual Leave', '2026-05-03', null, 'needs_review'),
+        record('Annual Leave', '2025-01-01', 'Full Day'), // outside the period
         record('Sick Leave', '2026-05-04', 'Full Day'), // other category
       ],
       { asOf: '2026-06-01' },
@@ -81,13 +81,13 @@ describe('leave calculation', () => {
     const balances = computeBalances(
       [
         allocation('Work From Home', 24),
-        allocation('Casual Leave', 12),
+        allocation('Annual Leave', 12),
         allocation('Sick Leave', 8),
         allocation('Carry Forward Leave', 3),
       ],
       [
         record('Work From Home', '2026-04-01', 'Full Day'),
-        record('Casual Leave', '2026-04-30', 'Half Day'),
+        record('Annual Leave', '2026-04-30', 'Half Day'),
         record('Sick Leave', '2026-04-13', 'Full Day'),
         record('Carry Forward Leave', '2026-05-01', 'Full Day'),
       ],
@@ -95,7 +95,7 @@ describe('leave calculation', () => {
     );
     expect(balances.map((b) => [b.category, b.used, b.remaining])).toEqual([
       ['Work From Home', 1, 23],
-      ['Casual Leave', 0.5, 11.5],
+      ['Annual Leave', 0.5, 11.5],
       ['Sick Leave', 1, 7],
       ['Carry Forward Leave', 1, 2],
     ]);
@@ -123,14 +123,14 @@ describe('leave calculation', () => {
     const records: CalcRecord[] = [
       record('Work From Home', '2026-04-01', 'Full Day'),
       record('Work From Home', '2026-04-07', 'Half Day'),
-      record('Casual Leave', '2026-04-30', 'Half Day'),
-      record('Casual Leave', '2026-05-22', 'Full Day'),
+      record('Annual Leave', '2026-04-30', 'Half Day'),
+      record('Annual Leave', '2026-05-22', 'Full Day'),
       record('Sick Leave', '2026-05-12', null, 'needs_review'),
     ];
     expect(monthlyUsage(records)).toEqual([
-      { month: '2026-04-01', category: 'Casual Leave', used_days: 0.5 },
+      { month: '2026-04-01', category: 'Annual Leave', used_days: 0.5 },
       { month: '2026-04-01', category: 'Work From Home', used_days: 1.5 },
-      { month: '2026-05-01', category: 'Casual Leave', used_days: 1 },
+      { month: '2026-05-01', category: 'Annual Leave', used_days: 1 },
     ]);
     expect(monthlyUsage(records, { start: '2026-05-01', end: '2026-05-31' })).toHaveLength(1);
     expect(summarizeUsage(records)).toEqual({ wfhDays: 1.5, leaveDays: 1.5 });

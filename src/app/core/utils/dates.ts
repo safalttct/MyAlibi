@@ -30,6 +30,30 @@ export function fiscalYearRangeFor(startYear: number): DateRange {
   return { start: `${startYear}-04-01`, end: `${startYear + 1}-03-31` };
 }
 
+/** Calendar year of the Apr 1 that starts this FY. */
+export function fiscalYearStartYear(range: DateRange): number {
+  return Number(range.start.slice(0, 4));
+}
+
+export function nextFiscalYear(range: DateRange): DateRange {
+  return fiscalYearRangeFor(fiscalYearStartYear(range) + 1);
+}
+
+export function previousFiscalYear(range: DateRange): DateRange {
+  return fiscalYearRangeFor(fiscalYearStartYear(range) - 1);
+}
+
+/** e.g. "FY 2026–27" */
+export function fiscalYearLabel(range: DateRange): string {
+  const start = fiscalYearStartYear(range);
+  const endShort = String(start + 1).slice(2);
+  return `FY ${start}–${endShort}`;
+}
+
+export function isSamePeriod(a: DateRange, b: DateRange): boolean {
+  return a.start === b.start && a.end === b.end;
+}
+
 export function inRange(date: string, start: string, end: string): boolean {
   return date >= start && date <= end;
 }

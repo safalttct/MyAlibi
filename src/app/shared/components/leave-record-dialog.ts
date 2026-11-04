@@ -13,13 +13,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { startWith } from 'rxjs';
 import {
-  CATEGORIES,
   DURATIONS,
   LeaveCategory,
   LeaveDuration,
   LeaveRecord,
+  categoryMeta,
   durationToDays,
+  normalizeCategory,
 } from '../../core/models/leave.models';
+import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import { ToastService } from '../../core/services/toast.service';
 import { todayIso } from '../../core/utils/dates';
@@ -50,7 +52,7 @@ import { UiSelect } from '../ui/ui-select';
         <div class="grid gap-4 sm:grid-cols-2">
           <ui-field label="Category" [required]="true">
             <select uiSelect formControlName="category">
-              @for (c of categories; track c.id) {
+              @for (c of categories(); track c.id) {
                 <option [value]="c.id">{{ c.label }}</option>
               }
             </select>
@@ -113,6 +115,7 @@ export class LeaveRecordDialog {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly records = inject(LeaveRecordsService);
   private readonly toast = inject(ToastService);
+  private readonly prefs = inject(CategoryPreferencesService);
 
   readonly open = input(false);
   readonly record = input<LeaveRecord | null>(null);
@@ -123,7 +126,17 @@ export class LeaveRecordDialog {
   /** Emitted after a successful create, update or delete. */
   readonly saved = output<void>();
 
-  protected readonly categories = CATEGORIES;
+  protected readonly categories = computed(() => {
+    const enabled = [...this.prefs.enabledCategories()];
+    const current = this.record()?.category;
+    if (current) {
+      const id = normalizeCategory(current);
+      if (!enabled.some((c) => c.id === id)) {
+        enabled.unshift(categoryMeta(id));
+      }
+    }
+    return enabled;
+  });
   protected readonly durations = DURATIONS;
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -132,7 +145,7 @@ export class LeaveRecordDialog {
 
   protected readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
-    category: this.fb.control<LeaveCategory>('Casual Leave', Validators.required),
+    category: this.fb.control<LeaveCategory>('Annual Leave', Validators.required),
     date: [todayIso(), Validators.required],
     duration: this.fb.control<LeaveDuration | null>('Full Day', Validators.required),
     notes: [''],
@@ -145,6 +158,7 @@ export class LeaveRecordDialog {
   protected readonly days = computed(() => durationToDays(this.durationValue()));
 
   constructor() {
+    void this.prefs.ensureLoaded();
     effect(() => {
       if (!this.open()) {
         return;
@@ -152,13 +166,18 @@ export class LeaveRecordDialog {
       const record = this.record();
       const defaultDate = this.defaultDate();
       const defaultCategory = this.defaultCategory();
+      const enabled = this.prefs.enabledCategories();
       untracked(() => {
         this.error.set(null);
         this.submitted.set(false);
         this.confirmDelete.set(false);
+        const fallback = enabled[0]?.id ?? 'Annual Leave';
+        const category = normalizeCategory(
+          record?.category ?? defaultCategory ?? fallback,
+        );
         this.form.reset({
           title: record?.title ?? defaultCategory ?? '',
-          category: record?.category ?? defaultCategory ?? 'Casual Leave',
+          category,
           date: record?.date ?? defaultDate ?? todayIso(),
           duration: record ? record.duration : 'Full Day',
           notes: record?.notes ?? '',

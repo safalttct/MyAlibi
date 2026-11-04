@@ -1,15 +1,26 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { LucideChevronLeft, LucideChevronRight, LucideHouse, LucidePlus, LucideTimerReset, LucideTriangleAlert } from '@lucide/angular';
+import { RouterLink } from '@angular/router';
+import {
+  LucideChevronLeft,
+  LucideChevronRight,
+  LucideHouse,
+  LucidePlus,
+  LucideSettings,
+  LucideSparkles,
+  LucideTimerReset,
+  LucideTriangleAlert,
+} from '@lucide/angular';
 import { addMonths, format, startOfMonth } from 'date-fns';
 import {
-  CATEGORIES,
   CategoryMeta,
   LeaveBalance,
   LeaveCategory,
   LeaveRecord,
+  categoryMeta,
 } from '../../core/models/leave.models';
 import { BalanceService } from '../../core/services/balance.service';
+import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import { monthlyUsage, negativeWarnings, summarizeUsage } from '../../core/services/leave-calculation';
 import { ToastService } from '../../core/services/toast.service';
@@ -34,6 +45,7 @@ interface BalanceRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
+    RouterLink,
     PageHeader,
     BalanceCard,
     UiCard,
@@ -48,11 +60,13 @@ interface BalanceRow {
     LucideChevronLeft,
     LucideChevronRight,
     LucideTriangleAlert,
+    LucideSparkles,
+    LucideSettings,
   ],
   template: `
     <app-page-header title="Dashboard" [subtitle]="subtitle()">
-      <button uiButton size="sm" (click)="openAdd('Casual Leave')">
-        <svg lucidePlus size="14"></svg> Add
+      <button uiButton size="sm" (click)="openAdd('Annual Leave')">
+        <svg lucidePlus size="14"></svg> Add leave
       </button>
       <button uiButton variant="outline" size="sm" (click)="openAdd('Work From Home')">
         <svg lucideHouse size="14"></svg> WFH
@@ -64,6 +78,47 @@ interface BalanceRow {
 
     @if (error()) {
       <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
+    }
+
+    @if (!loading() && showGettingStarted()) {
+      <section
+        class="mb-4 rounded-2xl border border-primary/25 bg-primary-soft p-4 sm:mb-5 sm:p-5"
+        aria-label="Getting started"
+      >
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <svg lucideSparkles size="18"></svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="text-sm font-semibold text-foreground">{{ gettingStartedTitle() }}</h2>
+            <p class="mt-1 text-sm text-muted">{{ gettingStartedCopy() }}</p>
+            <ol class="mt-3 space-y-2 text-sm">
+              @if (!hasAllocations()) {
+                <li class="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span class="text-foreground">
+                    <span class="font-medium">Set allocations</span>
+                    <span class="text-muted"> — WFH, casual, sick, carry, comp</span>
+                  </span>
+                  <a uiButton size="sm" routerLink="/settings/allocations" class="max-sm:w-full">
+                    <svg lucideSettings size="14"></svg> Open allocations
+                  </a>
+                </li>
+              }
+              @if (records().length === 0) {
+                <li class="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span class="text-foreground">
+                    <span class="font-medium">Add your first day</span>
+                    <span class="text-muted"> — leave or WFH</span>
+                  </span>
+                  <button uiButton size="sm" class="max-sm:w-full" (click)="openAdd('Work From Home')">
+                    <svg lucidePlus size="14"></svg> Add record
+                  </button>
+                </li>
+              }
+            </ol>
+          </div>
+        </div>
+      </section>
     }
 
     @if (warnings().length > 0) {
@@ -195,6 +250,7 @@ export class DashboardPage {
   private readonly balanceService = inject(BalanceService);
   private readonly recordsService = inject(LeaveRecordsService);
   private readonly toast = inject(ToastService);
+  private readonly prefs = inject(CategoryPreferencesService);
 
   protected readonly today = new Date();
   protected readonly todayStr = todayIso();
@@ -205,7 +261,7 @@ export class DashboardPage {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   private readonly balances = signal<LeaveBalance[]>([]);
-  private readonly records = signal<LeaveRecord[]>([]);
+  protected readonly records = signal<LeaveRecord[]>([]);
   private readonly miniMonth = signal(startOfMonth(new Date()));
 
   protected readonly dialogOpen = signal(false);
@@ -215,7 +271,8 @@ export class DashboardPage {
 
   protected readonly cards = computed<BalanceRow[]>(() => {
     const all = this.balances();
-    return CATEGORIES.map((meta) => {
+    const categories = this.prefs.enabledCategories();
+    return categories.map((meta) => {
       const rows = all.filter((b) => b.category === meta.id);
       const current =
         rows.find((b) => inRange(this.todayStr, b.period_start, b.period_end)) ??
@@ -239,6 +296,31 @@ export class DashboardPage {
     negativeWarnings(this.cards().flatMap((c) => (c.balance ? [c.balance] : []))),
   );
 
+  protected readonly hasAllocations = computed(() =>
+    this.balances().some((b) => Number(b.annual_allocation) > 0 || Number(b.total_available) > 0),
+  );
+
+  /** Empty entitlements or zero records → show first-run coach. */
+  protected readonly showGettingStarted = computed(
+    () => !this.hasAllocations() || this.records().length === 0,
+  );
+
+  protected readonly gettingStartedTitle = computed(() =>
+    !this.hasAllocations() && this.records().length === 0
+      ? 'Get set up in two steps'
+      : 'Finish getting started',
+  );
+
+  protected readonly gettingStartedCopy = computed(() => {
+    if (!this.hasAllocations() && this.records().length === 0) {
+      return 'Set your leave year entitlements, then log your first day.';
+    }
+    if (!this.hasAllocations()) {
+      return 'Add your leave year entitlements so balances stay accurate.';
+    }
+    return 'Log a leave or WFH day to start tracking.';
+  });
+
   private readonly monthRange = computed(() => {
     const ym = this.todayStr.slice(0, 7);
     return { start: `${ym}-01`, end: `${ym}-31` };
@@ -250,7 +332,7 @@ export class DashboardPage {
 
   protected readonly monthByCategory = computed(() => {
     const rows = monthlyUsage(this.records(), this.monthRange());
-    return CATEGORIES.map((meta) => ({
+    return this.prefs.enabledCategories().map((meta) => ({
       meta,
       days: rows.filter((r) => r.category === meta.id).reduce((s, r) => s + r.used_days, 0),
     }));
@@ -281,11 +363,12 @@ export class DashboardPage {
     }
     return buildMonthGrid(this.miniMonth()).map((day) => ({
       ...day,
-      dots: CATEGORIES.filter((c) => byDate.get(day.iso)?.has(c.id)),
+      dots: this.prefs.enabledCategories().filter((c) => byDate.get(day.iso)?.has(c.id)),
     }));
   });
 
   constructor() {
+    void this.prefs.ensureLoaded();
     void this.load();
   }
 
@@ -308,7 +391,7 @@ export class DashboardPage {
   }
 
   protected short(category: LeaveCategory): string {
-    return CATEGORIES.find((c) => c.id === category)?.short ?? category;
+    return categoryMeta(category).short;
   }
 
   protected shiftMonth(delta: number): void {

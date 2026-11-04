@@ -10,12 +10,8 @@ import {
   LucideTrash2,
 } from '@lucide/angular';
 import { format } from 'date-fns';
-import {
-  CATEGORIES,
-  DURATIONS,
-  LeaveRecord,
-  durationToDays,
-} from '../../core/models/leave.models';
+import { DURATIONS, LeaveRecord, durationToDays } from '../../core/models/leave.models';
+import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import { ToastService } from '../../core/services/toast.service';
 import { serializeCsv } from '../../core/utils/csv';
@@ -59,10 +55,19 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
   ],
   template: `
     <app-page-header title="Records" subtitle="Every leave and work-from-home entry">
-      <button uiButton variant="outline" size="sm" (click)="exportCsv()" [disabled]="filtered().length === 0">
+      <button
+        uiButton
+        variant="outline"
+        size="sm"
+        class="max-sm:order-2"
+        (click)="exportCsv()"
+        [disabled]="filtered().length === 0"
+      >
         <svg lucideDownload size="14"></svg> Export
       </button>
-      <button uiButton size="sm" (click)="openAdd()"><svg lucidePlus size="14"></svg> Add record</button>
+      <button uiButton size="sm" class="max-sm:order-1" (click)="openAdd()">
+        <svg lucidePlus size="14"></svg> Add record
+      </button>
     </app-page-header>
 
     <ui-card [padded]="false">
@@ -75,7 +80,7 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
         </label>
         <select uiSelect aria-label="Category" [value]="category()" (change)="category.set(val($event)); page.set(1)">
           <option value="">All categories</option>
-          @for (c of categories; track c.id) { <option [value]="c.id">{{ c.label }}</option> }
+          @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.label }}</option> }
         </select>
         <select uiSelect aria-label="Duration" [value]="duration()" (change)="duration.set(val($event)); page.set(1)">
           <option value="">Any duration</option>
@@ -207,7 +212,8 @@ export class LeaveRecordsPage {
   private readonly service = inject(LeaveRecordsService);
   private readonly toast = inject(ToastService);
 
-  protected readonly categories = CATEGORIES;
+  private readonly prefs = inject(CategoryPreferencesService);
+  protected readonly categories = this.prefs.enabledCategories;
   protected readonly durations = DURATIONS;
   protected readonly columns: readonly { key: SortKey; label: string }[] = [
     { key: 'date', label: 'Date' },
@@ -280,6 +286,7 @@ export class LeaveRecordsPage {
   });
 
   constructor() {
+    void this.prefs.ensureLoaded();
     void this.load();
   }
 

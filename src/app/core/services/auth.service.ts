@@ -18,6 +18,8 @@ export class AuthService {
   readonly user = computed<User | null>(() => this.session()?.user ?? null);
   readonly loading = signal(true);
   readonly isAuthenticated = computed(() => this.user() !== null);
+  /** True after the user opens a password-reset email link. */
+  readonly passwordRecovery = signal(false);
 
   private initPromise: Promise<void> | null = null;
 
@@ -41,8 +43,11 @@ export class AuthService {
       this.loading.set(false);
     }
 
-    this.supabase.client.auth.onAuthStateChange((_event, session) => {
+    this.supabase.client.auth.onAuthStateChange((event, session) => {
       this.session.set(session);
+      if (event === 'PASSWORD_RECOVERY') {
+        this.passwordRecovery.set(true);
+      }
     });
   }
 
@@ -79,5 +84,26 @@ export class AuthService {
     await this.supabase.client.auth.signOut();
     this.session.set(null);
     await this.router.navigate(['/login']);
+  }
+
+  /** Sends a password-reset email. Redirects back to /login after the user sets a new password. */
+  async requestPasswordReset(email: string): Promise<AuthResult> {
+    const redirectTo = `${window.location.origin}/login`;
+    const { error } = await this.supabase.client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+    if (error) {
+      return { error: error.message };
+    }
+    return { error: null };
+  }
+
+  async updatePassword(password: string): Promise<AuthResult> {
+    const { error } = await this.supabase.client.auth.updateUser({ password });
+    if (error) {
+      return { error: error.message };
+    }
+    this.passwordRecovery.set(false);
+    return { error: null };
   }
 }

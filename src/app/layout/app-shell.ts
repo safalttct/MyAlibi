@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
   LucideCalendar,
   LucideChartColumn,
+  LucideEllipsis,
   LucideLayoutDashboard,
   LucideListChecks,
   LucideLogOut,
@@ -12,8 +13,15 @@ import {
   LucideTimer,
   LucideUserRound,
 } from '@lucide/angular';
+import { filter } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../core/services/auth.service';
+import { CategoryPreferencesService } from '../core/services/category-preferences.service';
+import { FiscalYearService } from '../core/services/fiscal-year.service';
 import { ThemeService } from '../core/services/theme.service';
+import { ToastService } from '../core/services/toast.service';
+import { AccountMenu } from '../shared/components/account-menu';
+import { AppFooter } from '../shared/components/app-footer';
 import { AppLogo } from '../shared/components/app-logo';
 
 interface NavItem {
@@ -32,6 +40,8 @@ interface NavItem {
     RouterLink,
     RouterLinkActive,
     AppLogo,
+    AppFooter,
+    AccountMenu,
     LucideLayoutDashboard,
     LucideListChecks,
     LucideCalendar,
@@ -42,6 +52,7 @@ interface NavItem {
     LucideMoon,
     LucideLogOut,
     LucideUserRound,
+    LucideEllipsis,
   ],
   template: `
     <div class="min-h-dvh bg-background text-foreground">
@@ -91,46 +102,38 @@ interface NavItem {
               <p class="text-[11px] text-muted-foreground">Signed in</p>
             </div>
           </div>
-          <div class="flex gap-1">
-            <button
-              type="button"
-              class="touch-target flex-1 rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
-              [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-              (click)="theme.toggle()"
-            >
-              @if (theme.theme() === 'dark') {
-                <svg lucideSun size="16"></svg>
-              } @else {
-                <svg lucideMoon size="16"></svg>
-              }
-            </button>
-            <button
-              type="button"
-              class="touch-target flex-1 rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
-              aria-label="Sign out"
-              (click)="auth.signOut()"
-            >
-              <svg lucideLogOut size="16"></svg>
-            </button>
-          </div>
+          <button
+            type="button"
+            class="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+            (click)="theme.toggle()"
+          >
+            @if (theme.theme() === 'dark') {
+              <svg lucideSun size="16"></svg>
+              Light mode
+            } @else {
+              <svg lucideMoon size="16"></svg>
+              Dark mode
+            }
+          </button>
+          <button
+            type="button"
+            class="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            (click)="auth.signOut()"
+          >
+            <svg lucideLogOut size="16"></svg>
+            Sign out
+          </button>
         </div>
       </aside>
 
       <!-- Mobile top bar -->
       <header
-        class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-4 backdrop-blur-md md:hidden"
+        class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-3 backdrop-blur-md md:hidden"
       >
-        <a routerLink="/dashboard" class="outline-none" aria-label="MyAlibi home">
+        <a routerLink="/dashboard" class="min-w-0 outline-none" aria-label="MyAlibi home">
           <app-logo size="md" />
         </a>
-        <div class="flex items-center gap-0.5">
-          <a
-            routerLink="/settings/profile"
-            class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-            aria-label="Profile and settings"
-          >
-            <svg lucideSettings size="18" strokeWidth="1.75"></svg>
-          </a>
+        <div class="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
@@ -143,12 +146,23 @@ interface NavItem {
               <svg lucideMoon size="18"></svg>
             }
           </button>
+          <button
+            type="button"
+            class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+            aria-label="Account menu"
+            (click)="moreOpen.set(true)"
+          >
+            <svg lucideUserRound size="18" strokeWidth="1.75"></svg>
+          </button>
         </div>
       </header>
 
       <main class="md:ml-60">
-        <div class="page-shell safe-pb-nav px-4 pt-5 sm:px-6 md:px-8 md:pt-8 md:pb-10">
-          <router-outlet />
+        <div class="page-shell safe-pb-nav flex min-h-[calc(100dvh-3.5rem)] flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-10">
+          <div class="flex-1">
+            <router-outlet />
+          </div>
+          <app-footer class="mt-6 pb-3 md:pb-0" />
         </div>
       </main>
 
@@ -158,7 +172,7 @@ interface NavItem {
         style="padding-bottom: var(--safe-bottom)"
         aria-label="Primary mobile"
       >
-        <div class="grid h-16 grid-cols-4">
+        <div class="grid h-16 grid-cols-5">
           @for (item of mobileNav; track item.path) {
             <a
               [routerLink]="item.path"
@@ -174,23 +188,66 @@ interface NavItem {
               <span>{{ item.short }}</span>
             </a>
           }
+          <button
+            type="button"
+            class="flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors"
+            [class]="moreActive() || moreOpen() ? 'text-primary' : 'text-muted-foreground'"
+            aria-label="More menu"
+            [attr.aria-expanded]="moreOpen()"
+            (click)="moreOpen.set(true)"
+          >
+            <svg lucideEllipsis size="20" strokeWidth="1.75"></svg>
+            <span>More</span>
+          </button>
         </div>
       </nav>
+
+      <app-account-menu [open]="moreOpen()" (closed)="moreOpen.set(false)" />
     </div>
   `,
 })
 export class AppShell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  private readonly router = inject(Router);
+  private readonly categoryPrefs = inject(CategoryPreferencesService);
+  private readonly fiscalYear = inject(FiscalYearService);
+  private readonly toast = inject(ToastService);
+
+  protected readonly moreOpen = signal(false);
+  protected readonly moreActive = signal(false);
 
   protected readonly primaryNav: readonly NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', short: 'Home', icon: 'dashboard', mobile: true },
     { path: '/records', label: 'Records', short: 'Records', icon: 'records', mobile: true },
     { path: '/calendar', label: 'Calendar', short: 'Calendar', icon: 'calendar', mobile: true },
-    { path: '/analytics', label: 'Analytics', short: 'Analytics', icon: 'analytics', mobile: true },
+    { path: '/analytics', label: 'Analytics', short: 'Stats', icon: 'analytics', mobile: true },
     { path: '/comp-off', label: 'Comp Off', short: 'Comp', icon: 'compoff' },
     { path: '/settings', label: 'Settings', short: 'Settings', icon: 'settings' },
   ];
 
   protected readonly mobileNav = this.primaryNav.filter((n) => n.mobile);
+
+  constructor() {
+    void this.bootstrapFiscalYear();
+    this.syncMoreActive(this.router.url);
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((e) => this.syncMoreActive(e.urlAfterRedirects));
+  }
+
+  private async bootstrapFiscalYear(): Promise<void> {
+    await this.categoryPrefs.ensureLoaded();
+    const result = await this.fiscalYear.ensureCurrentFiscalYear();
+    if (result?.created) {
+      this.toast.success(`Started ${this.fiscalYear.currentLabel()} — entitlements rolled over`);
+    }
+  }
+
+  private syncMoreActive(url: string): void {
+    this.moreActive.set(url.startsWith('/comp-off') || url.startsWith('/settings'));
+  }
 }

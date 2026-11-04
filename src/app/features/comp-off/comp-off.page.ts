@@ -55,7 +55,9 @@ const TYPE_LABEL: Record<CompOffType, string> = {
     <app-page-header title="Comp Off" subtitle="Earn, use and adjust compensatory leave">
       <button uiButton size="sm" (click)="openForm('earned')"><svg lucidePlus size="14"></svg> Earn</button>
       <button uiButton variant="outline" size="sm" (click)="openForm('used')"><svg lucideMinus size="14"></svg> Use</button>
-      <button uiButton variant="outline" size="sm" (click)="openForm('adjustment')"><svg lucideSlidersHorizontal size="14"></svg> Adjust</button>
+      <button uiButton variant="outline" size="sm" class="max-sm:basis-full" (click)="openForm('adjustment')">
+        <svg lucideSlidersHorizontal size="14"></svg> Adjust
+      </button>
     </app-page-header>
 
     @if (error()) {

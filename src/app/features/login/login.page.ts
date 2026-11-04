@@ -1,24 +1,44 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { environment } from '../../../environments/environment';
-import { AppLogo } from '../../shared/components/app-logo';
 import { AuthService } from '../../core/services/auth.service';
+import { isChunkLoadError, recoverFromStaleChunk } from '../../core/utils/chunk-reload';
+import { AppFooter } from '../../shared/components/app-footer';
+import { AppLogo } from '../../shared/components/app-logo';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiField } from '../../shared/ui/ui-field';
 import { UiInput } from '../../shared/ui/ui-input';
+import { UiPasswordInput } from '../../shared/ui/ui-password-input';
 
-type Mode = 'signin' | 'signup';
+type Mode = 'signin' | 'signup' | 'reset' | 'update';
+
+const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
+  const password = group.get('password')?.value;
+  const confirm = group.get('confirmPassword')?.value;
+  if (!confirm) {
+    return null;
+  }
+  return password === confirm ? null : { passwordMismatch: true };
+};
 
 @Component({
   selector: 'app-login-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, AppLogo, UiButton, UiField, UiInput],
+  imports: [ReactiveFormsModule, AppLogo, AppFooter, UiButton, UiField, UiInput, UiPasswordInput],
   template: `
-    <div class="flex min-h-dvh items-center justify-center bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
+    <div class="flex min-h-dvh flex-col bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
+      <div class="flex flex-1 items-center justify-center">
       @if (!configured) {
         <section class="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
-          <div class="mb-5 flex justify-center"><app-logo class="[&_img]:object-center" size="lg" /></div>
+          <div class="mb-6 flex justify-center">
+            <app-logo class="[&_img]:object-center" size="xl" />
+          </div>
           <h1 class="text-lg font-semibold tracking-tight text-foreground">Supabase not configured</h1>
           <p class="mt-2 text-sm text-muted">
             Set <code class="rounded bg-elevated px-1 py-0.5 text-xs">NG_APP_SUPABASE_URL</code> and
@@ -33,53 +53,152 @@ type Mode = 'signin' | 'signup';
       } @else {
         <section class="w-full max-w-sm">
           <div class="mb-8 flex flex-col items-center gap-3 text-center">
-            <app-logo class="[&_img]:object-center" size="lg" />
+            <app-logo class="[&_img]:mx-auto [&_img]:object-center" size="xl" />
             <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
           </div>
 
           <div class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-            <div class="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 text-sm font-medium" role="tablist">
-              <button type="button" role="tab" [attr.aria-selected]="mode() === 'signin'"
-                class="min-h-10 rounded-lg transition-colors"
-                [class]="mode() === 'signin' ? 'bg-primary-soft text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                (click)="setMode('signin')">Sign in</button>
-              <button type="button" role="tab" [attr.aria-selected]="mode() === 'signup'"
-                class="min-h-10 rounded-lg transition-colors"
-                [class]="mode() === 'signup' ? 'bg-primary-soft text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                (click)="setMode('signup')">Create account</button>
-            </div>
+            @if (mode() === 'signin' || mode() === 'signup') {
+              <div
+                class="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 text-sm font-medium"
+                role="tablist"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  [attr.aria-selected]="mode() === 'signin'"
+                  class="min-h-10 rounded-lg transition-colors"
+                  [class]="
+                    mode() === 'signin'
+                      ? 'bg-primary-soft text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  "
+                  (click)="setMode('signin')"
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  [attr.aria-selected]="mode() === 'signup'"
+                  class="min-h-10 rounded-lg transition-colors"
+                  [class]="
+                    mode() === 'signup'
+                      ? 'bg-primary-soft text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  "
+                  (click)="setMode('signup')"
+                >
+                  Create account
+                </button>
+              </div>
+            } @else if (mode() === 'reset') {
+              <div class="mb-5">
+                <h2 class="text-base font-semibold tracking-tight text-foreground">Reset password</h2>
+                <p class="mt-1 text-sm text-muted">We’ll email you a link to choose a new password.</p>
+              </div>
+            } @else {
+              <div class="mb-5">
+                <h2 class="text-base font-semibold tracking-tight text-foreground">Choose a new password</h2>
+                <p class="mt-1 text-sm text-muted">You’re signed in via the reset link. Set a new password to continue.</p>
+              </div>
+            }
 
             <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4" novalidate>
-              <ui-field label="Email" [error]="fieldError('email')">
-                <input uiInput type="email" formControlName="email" autocomplete="email" inputmode="email" placeholder="you@example.com" />
-              </ui-field>
-              <ui-field label="Password" [error]="fieldError('password')">
-                <input uiInput type="password" formControlName="password"
-                  [attr.autocomplete]="mode() === 'signin' ? 'current-password' : 'new-password'"
-                  placeholder="At least 6 characters" />
-              </ui-field>
+              @if (mode() === 'signin' || mode() === 'signup' || mode() === 'reset') {
+                <ui-field label="Email" [error]="fieldError('email')" [required]="true">
+                  <input
+                    uiInput
+                    type="email"
+                    formControlName="email"
+                    autocomplete="email"
+                    inputmode="email"
+                    placeholder="you@example.com"
+                    [attr.aria-invalid]="!!fieldError('email')"
+                  />
+                </ui-field>
+              }
+
+              @if (mode() === 'signin' || mode() === 'signup' || mode() === 'update') {
+                <ui-field
+                  [label]="mode() === 'update' ? 'New password' : 'Password'"
+                  [error]="fieldError('password')"
+                  [required]="true"
+                >
+                  <ui-password-input
+                    formControlName="password"
+                    [autocomplete]="passwordAutocomplete()"
+                    placeholder="At least 6 characters"
+                    [invalid]="!!fieldError('password')"
+                  />
+                </ui-field>
+              }
+
+              @if (mode() === 'signup' || mode() === 'update') {
+                <ui-field label="Confirm password" [error]="confirmError()" [required]="true">
+                  <ui-password-input
+                    formControlName="confirmPassword"
+                    autocomplete="new-password"
+                    placeholder="Re-enter password"
+                    [invalid]="!!confirmError()"
+                  />
+                </ui-field>
+              }
+
+              @if (mode() === 'signin') {
+                <div class="-mt-1 flex justify-end">
+                  <button
+                    type="button"
+                    class="text-xs font-medium text-primary hover:underline"
+                    (click)="setMode('reset')"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              }
 
               @if (error()) {
-                <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
+                <p
+                  class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
+                  role="alert"
+                >
+                  {{ error() }}
+                </p>
               }
               @if (info()) {
-                <p class="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success" role="status">{{ info() }}</p>
+                <p
+                  class="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success"
+                  role="status"
+                >
+                  {{ info() }}
+                </p>
               }
 
               <button uiButton type="submit" size="lg" class="mt-1 w-full" [loading]="busy()">
-                {{ mode() === 'signin' ? 'Sign in' : 'Create account' }}
+                {{ submitLabel() }}
               </button>
+
+              @if (mode() === 'reset') {
+                <button
+                  type="button"
+                  class="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  (click)="setMode('signin')"
+                >
+                  Back to sign in
+                </button>
+              }
             </form>
           </div>
         </section>
       }
+      </div>
+      <app-footer class="mx-auto w-full max-w-sm pt-6" />
     </div>
   `,
 })
 export class LoginPage {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
   protected readonly configured = environment.configured;
   protected readonly mode = signal<Mode>('signin');
@@ -88,15 +207,67 @@ export class LoginPage {
   protected readonly info = signal<string | null>(null);
   private readonly submitted = signal(false);
 
-  protected readonly form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+  protected readonly form = this.fb.group(
+    {
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: [''],
+    },
+    { validators: passwordMatch },
+  );
+
+  protected readonly submitLabel = computed(() => {
+    switch (this.mode()) {
+      case 'signup':
+        return 'Create account';
+      case 'reset':
+        return 'Send reset link';
+      case 'update':
+        return 'Save new password';
+      default:
+        return 'Sign in';
+    }
   });
+
+  protected readonly passwordAutocomplete = computed(() =>
+    this.mode() === 'signin' ? 'current-password' : 'new-password',
+  );
+
+  constructor() {
+    effect(() => {
+      if (this.auth.passwordRecovery()) {
+        this.setMode('update');
+      }
+    });
+  }
 
   protected setMode(mode: Mode): void {
     this.mode.set(mode);
     this.error.set(null);
     this.info.set(null);
+    this.submitted.set(false);
+    this.form.controls.confirmPassword.reset('');
+
+    if (mode === 'reset') {
+      this.form.controls.password.clearValidators();
+      this.form.controls.confirmPassword.clearValidators();
+      this.form.controls.email.setValidators([Validators.required, Validators.email]);
+    } else if (mode === 'update') {
+      this.form.controls.email.clearValidators();
+      this.form.controls.password.setValidators([Validators.required, Validators.minLength(6)]);
+      this.form.controls.confirmPassword.setValidators([Validators.required]);
+    } else {
+      this.form.controls.email.setValidators([Validators.required, Validators.email]);
+      this.form.controls.password.setValidators([Validators.required, Validators.minLength(6)]);
+      if (mode === 'signup') {
+        this.form.controls.confirmPassword.setValidators([Validators.required]);
+      } else {
+        this.form.controls.confirmPassword.clearValidators();
+      }
+    }
+    this.form.controls.email.updateValueAndValidity();
+    this.form.controls.password.updateValueAndValidity();
+    this.form.controls.confirmPassword.updateValueAndValidity();
   }
 
   protected fieldError(name: 'email' | 'password'): string | null {
@@ -110,33 +281,98 @@ export class LoginPage {
     return name === 'email' ? 'Enter a valid email address' : 'Use at least 6 characters';
   }
 
+  protected confirmError(): string | null {
+    const control = this.form.controls.confirmPassword;
+    const show = control.touched || this.submitted();
+    if (!show) {
+      return null;
+    }
+    if (control.errors?.['required']) {
+      return 'Required';
+    }
+    if (this.form.errors?.['passwordMismatch']) {
+      return 'Passwords do not match';
+    }
+    return null;
+  }
+
   protected async submit(): Promise<void> {
     this.submitted.set(true);
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.busy()) {
+    if (this.busy()) {
       return;
     }
+
+    const mode = this.mode();
+    if ((mode === 'signup' || mode === 'update') && this.form.errors?.['passwordMismatch']) {
+      return;
+    }
+    if (mode !== 'update' && this.form.controls.email.invalid) {
+      return;
+    }
+    if (mode !== 'reset' && this.form.controls.password.invalid) {
+      return;
+    }
+    if ((mode === 'signup' || mode === 'update') && this.form.controls.confirmPassword.invalid) {
+      return;
+    }
+
     this.busy.set(true);
     this.error.set(null);
     this.info.set(null);
     try {
       const { email, password } = this.form.getRawValue();
+
+      if (mode === 'reset') {
+        const result = await this.auth.requestPasswordReset(email.trim());
+        if (result.error) {
+          this.error.set(result.error);
+        } else {
+          this.info.set('If an account exists for that email, a reset link is on the way.');
+        }
+        return;
+      }
+
+      if (mode === 'update') {
+        const result = await this.auth.updatePassword(password);
+        if (result.error) {
+          this.error.set(result.error);
+        } else {
+          this.info.set('Password updated. You’re all set.');
+          await this.goHome();
+        }
+        return;
+      }
+
       const result =
-        this.mode() === 'signin'
+        mode === 'signin'
           ? await this.auth.signIn(email.trim(), password)
           : await this.auth.signUp(email.trim(), password);
       if (result.error) {
         this.error.set(result.error);
       } else if (result.needsConfirmation) {
         this.info.set('Account created. Check your email to confirm your address, then sign in.');
-        this.mode.set('signin');
+        this.setMode('signin');
       } else {
-        await this.router.navigate(['/dashboard']);
+        await this.goHome();
       }
     } catch (e) {
+      if (isChunkLoadError(e) && this.auth.isAuthenticated()) {
+        recoverFromStaleChunk('/dashboard');
+        return;
+      }
       this.error.set(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /**
+   * Full document navigation into the app shell.
+   * Soft router loads can 404 stale Vite chunks after a rebuild while the
+   * login page is still open — a hard assign always picks up the new graph.
+   */
+  private async goHome(): Promise<void> {
+    recoverFromStaleChunk('/dashboard');
   }
 }

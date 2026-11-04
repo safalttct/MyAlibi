@@ -42,7 +42,7 @@ describe('parseLeaveCsv', () => {
     const { rows } = parseLeaveCsv(ORDER_A);
     expect(rows[0]).toMatchObject({
       title: 'Casual Leave',
-      category: 'Casual Leave',
+      category: 'Annual Leave',
       date: '2026-06-24',
       duration: 'Half Day',
       status: 'complete',

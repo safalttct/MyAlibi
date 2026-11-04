@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { LucideLogOut } from '@lucide/angular';
+import { AuthService } from '../../core/services/auth.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { ToastService } from '../../core/services/toast.service';
 import { PageHeader } from '../../shared/components/page-header';
@@ -24,39 +26,76 @@ function timezones(current: string): string[] {
 @Component({
   selector: 'app-profile-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, PageHeader, SettingsTabs, UiCard, UiButton, UiField, UiInput, UiSelect, UiSkeleton],
+  imports: [
+    ReactiveFormsModule,
+    PageHeader,
+    SettingsTabs,
+    UiCard,
+    UiButton,
+    UiField,
+    UiInput,
+    UiSelect,
+    UiSkeleton,
+    LucideLogOut,
+  ],
   template: `
-    <app-page-header title="Settings" subtitle="Your profile" />
+    <app-page-header title="Settings" subtitle="Your profile and account" />
     <app-settings-tabs class="mb-5 sm:mb-6" />
 
-    <ui-card class="max-w-xl">
-      @if (loading()) {
-        <ui-skeleton class="h-40" />
-      } @else {
-        <form [formGroup]="form" (ngSubmit)="save()" class="grid gap-4">
-          <ui-field label="Display name" [error]="nameError()">
-            <input uiInput type="text" formControlName="display_name" maxlength="80" placeholder="Your name" />
-          </ui-field>
-          <ui-field label="Timezone">
-            <select uiSelect formControlName="timezone">
-              @for (tz of zones(); track tz) { <option [value]="tz">{{ tz }}</option> }
-            </select>
-          </ui-field>
-          @if (error()) {
-            <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
-          }
-          <div class="flex justify-end">
-            <button uiButton type="submit" class="max-sm:w-full" [loading]="saving()">Save profile</button>
+    <div class="grid max-w-xl gap-4">
+      <ui-card title="Profile">
+        @if (loading()) {
+          <ui-skeleton class="h-40" />
+        } @else {
+          <form [formGroup]="form" (ngSubmit)="save()" class="grid gap-4">
+            <ui-field label="Display name" [error]="nameError()">
+              <input uiInput type="text" formControlName="display_name" maxlength="80" placeholder="Your name" />
+            </ui-field>
+            <ui-field label="Timezone">
+              <select uiSelect formControlName="timezone">
+                @for (tz of zones(); track tz) {
+                  <option [value]="tz">{{ tz }}</option>
+                }
+              </select>
+            </ui-field>
+            @if (error()) {
+              <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+                {{ error() }}
+              </p>
+            }
+            <div class="flex justify-end">
+              <button uiButton type="submit" class="max-sm:w-full" [loading]="saving()">Save profile</button>
+            </div>
+          </form>
+        }
+      </ui-card>
+
+      <ui-card title="Account" description="Signed in as this email">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium text-foreground">{{ auth.user()?.email }}</p>
+            <p class="mt-0.5 text-xs text-muted">Use Sign out on shared devices</p>
           </div>
-        </form>
-      }
-    </ui-card>
+          <button
+            uiButton
+            type="button"
+            variant="outline"
+            class="max-sm:w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+            (click)="auth.signOut()"
+          >
+            <svg lucideLogOut size="16"></svg>
+            Sign out
+          </button>
+        </div>
+      </ui-card>
+    </div>
   `,
 })
 export class ProfilePage {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);

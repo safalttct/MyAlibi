@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ThemeService } from '../../core/services/theme.service';
 
-export type LogoSize = 'sm' | 'md' | 'lg';
+export type LogoSize = 'sm' | 'md' | 'lg' | 'xl';
 
 @Component({
   selector: 'app-logo',
@@ -15,8 +15,8 @@ export type LogoSize = 'sm' | 'md' | 'lg';
       [src]="src()"
       alt="MyAlibi"
       [class]="imgClass()"
-      width="200"
-      height="48"
+      width="280"
+      height="86"
       decoding="async"
     />
   `,
@@ -38,10 +38,11 @@ export class AppLogo {
 
   protected readonly imgClass = computed(() => {
     const sizes: Record<LogoSize, string> = {
-      sm: 'h-9 w-auto',
-      md: 'h-10 w-auto',
-      lg: 'h-12 w-auto sm:h-14',
+      sm: 'h-8 w-auto',
+      md: 'h-9 w-auto sm:h-10',
+      lg: 'h-11 w-auto sm:h-12',
+      xl: 'h-14 w-auto sm:h-16',
     };
-    return `${sizes[this.size()]} max-w-[200px] object-contain object-left select-none`;
+    return `${sizes[this.size()]} max-w-[min(100%,280px)] object-contain object-left select-none`;
   });
 }

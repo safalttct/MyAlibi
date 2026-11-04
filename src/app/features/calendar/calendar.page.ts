@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { LucideChevronLeft, LucideChevronRight, LucidePlus } from '@lucide/angular';
 import { addMonths, format, startOfMonth } from 'date-fns';
-import { CATEGORIES, LeaveCategory, LeaveRecord, categoryMeta } from '../../core/models/leave.models';
+import { LeaveCategory, LeaveRecord, categoryMeta } from '../../core/models/leave.models';
+import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import { WEEKDAYS_MON_FIRST, buildMonthGrid } from '../../core/utils/calendar-grid';
 import { fromIsoDate, todayIso } from '../../core/utils/dates';
@@ -28,20 +29,22 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
   ],
   template: `
     <app-page-header title="Calendar" [subtitle]="label()">
-      <button uiButton variant="outline" size="icon" aria-label="Previous month" (click)="shift(-1)">
-        <svg lucideChevronLeft size="16"></svg>
-      </button>
-      <button uiButton variant="outline" size="sm" (click)="goToday()">Today</button>
-      <button uiButton variant="outline" size="icon" aria-label="Next month" (click)="shift(1)">
-        <svg lucideChevronRight size="16"></svg>
-      </button>
+      <div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+        <button uiButton variant="outline" size="icon" aria-label="Previous month" (click)="shift(-1)">
+          <svg lucideChevronLeft size="16"></svg>
+        </button>
+        <button uiButton variant="outline" size="sm" class="flex-1 sm:flex-none" (click)="goToday()">Today</button>
+        <button uiButton variant="outline" size="icon" aria-label="Next month" (click)="shift(1)">
+          <svg lucideChevronRight size="16"></svg>
+        </button>
+      </div>
     </app-page-header>
 
     <div class="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="group" aria-label="Filter by category">
       <button type="button" class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
         [class]="filter() === '' ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted hover:text-foreground'"
         (click)="filter.set('')">All</button>
-      @for (c of categories; track c.id) {
+      @for (c of categories(); track c.id) {
         <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
           [class]="filter() === c.id ? c.borderClass + ' ' + c.softBgClass + ' ' + c.textClass : 'border-border text-muted hover:text-foreground'"
           [attr.aria-pressed]="filter() === c.id"
@@ -138,8 +141,9 @@ import { UiSkeleton } from '../../shared/ui/ui-skeleton';
 })
 export class CalendarPage {
   private readonly service = inject(LeaveRecordsService);
+  private readonly prefs = inject(CategoryPreferencesService);
 
-  protected readonly categories = CATEGORIES;
+  protected readonly categories = this.prefs.enabledCategories;
   protected readonly weekdays = WEEKDAYS_MON_FIRST;
   protected readonly todayStr = todayIso();
 
@@ -173,6 +177,7 @@ export class CalendarPage {
   protected readonly selectedRecords = computed(() => this.days().find((d) => d.iso === this.selected())?.records ?? []);
 
   constructor() {
+    void this.prefs.ensureLoaded();
     void this.load();
   }
 

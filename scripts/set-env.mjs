@@ -72,6 +72,12 @@ const configured = Boolean(supabaseUrl && supabasePublishableKey);
 const isProduction =
   process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
+const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+const appVersion =
+  typeof packageJson.version === 'string' && packageJson.version.trim()
+    ? packageJson.version.trim()
+    : '0.0.0';
+
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(
   outPath,
@@ -81,6 +87,7 @@ export const environment = {
   supabaseUrl: ${JSON.stringify(supabaseUrl)},
   supabasePublishableKey: ${JSON.stringify(supabasePublishableKey)},
   configured: ${configured},
+  version: ${JSON.stringify(appVersion)},
 };
 `,
   'utf8',
