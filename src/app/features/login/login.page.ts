@@ -23,9 +23,9 @@ type Mode = 'signin' | 'signup';
             <code class="rounded bg-background px-1 py-0.5">NG_APP_SUPABASE_PUBLISHABLE_KEY</code>.
           </p>
           <ol class="mx-auto mt-4 max-w-xs list-decimal space-y-1 pl-5 text-left text-sm text-muted">
-            <li>Copy <code>.env.example</code> to <code>.env</code></li>
-            <li>Fill in your Supabase project URL and publishable key</li>
-            <li>Run <code>pnpm start</code> again</li>
+            <li>Local: copy <code>.env.example</code> to <code>.env</code> and fill the keys</li>
+            <li>Vercel: set <code>NG_APP_SUPABASE_URL</code> and <code>NG_APP_SUPABASE_PUBLISHABLE_KEY</code> (or the Supabase integration vars) and redeploy</li>
+            <li>Run <code>pnpm start</code> locally, or open the new Vercel deployment</li>
           </ol>
         </section>
       } @else {
