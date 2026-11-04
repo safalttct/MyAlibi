@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <title>MyAlibi</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="MyAlibi - personal leave and WFH tracker">
+  <meta name="theme-color" content="#09090B">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    try {
+      if (localStorage.getItem('myalibi-theme') === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
