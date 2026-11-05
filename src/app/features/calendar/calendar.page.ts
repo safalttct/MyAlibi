@@ -43,7 +43,7 @@ type CalendarFilter = '' | LeaveCategory | 'holiday';
       </div>
     </app-page-header>
 
-    <div class="sticky top-14 z-20 -mx-4 mb-4 flex gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur-md sm:static sm:top-auto sm:mx-0 sm:flex-wrap sm:overflow-visible sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none md:top-0" role="group" aria-label="Filter by category">
+    <div class="glass-chrome sticky top-14 z-20 -mx-4 mb-4 flex gap-2 overflow-x-auto border-b px-4 py-2 sm:static sm:top-auto sm:mx-0 sm:flex-wrap sm:overflow-visible sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:[backdrop-filter:none] sm:shadow-none md:top-0" role="group" aria-label="Filter by category">
       <button type="button" class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
         [class]="filter() === '' ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted hover:text-foreground'"
         [attr.aria-pressed]="filter() === ''"

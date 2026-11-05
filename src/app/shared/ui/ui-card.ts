@@ -27,8 +27,11 @@ export class UiCard {
 
   protected readonly classes = computed(
     () =>
-      'block rounded-xl border border-border bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.05)] ' +
-      (this.interactive() ? 'transition-colors hover:bg-card-hover' : ''),
+      'block rounded-xl border border-border bg-card text-foreground ' +
+      'shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out ' +
+      (this.interactive()
+        ? 'hover:-translate-y-0.5 hover:bg-card-hover hover:shadow-md active:translate-y-0'
+        : ''),
   );
 
   protected readonly bodyClass = computed(() =>

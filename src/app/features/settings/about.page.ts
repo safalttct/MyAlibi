@@ -30,6 +30,7 @@ import { UiCard } from '../../shared/ui/ui-card';
     LucideHouse,
     LucideMessageCircleQuestion,
   ],
+  host: { class: 'block min-w-0 max-w-full overflow-x-hidden' },
   styles: `
     @keyframes about-rise {
       from {
@@ -77,15 +78,15 @@ import { UiCard } from '../../shared/ui/ui-card';
         class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--primary-soft),_transparent_55%),radial-gradient(ellipse_at_bottom_right,_rgb(139_92_246_/_0.12),_transparent_50%)]"
         aria-hidden="true"
       ></div>
-      <div class="relative px-5 py-8 sm:px-8 sm:py-10">
-        <div class="mb-5 flex items-center gap-3">
+      <div class="relative px-4 py-7 sm:px-8 sm:py-10">
+        <div class="mb-5 flex max-w-full items-center gap-3 overflow-hidden">
           <app-logo size="lg" />
         </div>
-        <p class="text-xs font-medium tracking-[0.14em] text-primary uppercase">MyAlibi</p>
-        <h2 id="about-hero-title" class="mt-2 max-w-xl text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+        <p class="text-xs font-medium tracking-wide text-primary uppercase">MyAlibi</p>
+        <h2 id="about-hero-title" class="mt-2 max-w-xl text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           Your leave log is your alibi.
         </h2>
-        <p class="mt-3 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
+        <p class="mt-3 max-w-lg text-sm leading-relaxed text-pretty text-muted sm:text-base">
           Built for personal use, then opened up so colleagues can track leave, WFH, and Comp Off in one shared workspace.
         </p>
         <p class="mt-4 text-xs text-muted tabular-nums">Version {{ version }}</p>
@@ -165,7 +166,7 @@ import { UiCard } from '../../shared/ui/ui-card';
 
       <ui-card title="Created by" description="Author &amp; maintainer">
         <div
-          class="flex flex-col gap-4 rounded-xl border border-border bg-elevated/40 p-4 sm:flex-row sm:items-center"
+          class="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-elevated/40 p-4 sm:flex-row sm:items-center"
         >
           <div
             class="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-lg font-semibold text-primary-foreground"
@@ -180,18 +181,18 @@ import { UiCard } from '../../shared/ui/ui-card';
               uiButton
               variant="outline"
               size="sm"
-              class="mt-3 inline-flex"
+              class="mt-3 max-w-full"
               href="https://github.com/SafalNaushad"
               target="_blank"
               rel="noopener noreferrer"
             >
               <svg lucideCode2 size="14"></svg>
-              github.com/SafalNaushad
+              GitHub profile
               <svg lucideExternalLink size="12" class="opacity-60"></svg>
             </a>
           </div>
         </div>
-        <p class="mt-4 text-sm leading-relaxed text-muted">
+        <p class="mt-4 text-sm leading-relaxed text-pretty text-muted">
           Designed and built to keep leave honest, simple, and shareable — so “where are you today?” always has a clear answer.
         </p>
       </ui-card>

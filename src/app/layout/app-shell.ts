@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
   LucideCalendar,
@@ -14,7 +21,6 @@ import {
   LucideUserRound,
 } from '@lucide/angular';
 import { filter } from 'rxjs/operators';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../core/services/auth.service';
 import { CategoryPreferencesService } from '../core/services/category-preferences.service';
 import { FiscalYearService } from '../core/services/fiscal-year.service';
@@ -58,7 +64,7 @@ interface NavItem {
     LucideEllipsis,
   ],
   template: `
-    <div class="min-h-dvh bg-background text-foreground">
+    <div class="min-h-dvh overflow-x-hidden bg-background text-foreground">
       <!-- Desktop sidebar -->
       <aside
         class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-surface md:flex"
@@ -131,7 +137,8 @@ interface NavItem {
 
       <!-- Mobile top bar -->
       <header
-        class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-3 backdrop-blur-md md:hidden"
+        class="glass-chrome sticky top-0 z-30 flex h-14 items-center justify-between border-b px-3 md:hidden"
+        [class.glass-chrome-scrolled]="headerScrolled()"
       >
         <a routerLink="/dashboard" class="min-w-0 outline-none" aria-label="MyAlibi home">
           <app-logo size="md" />
@@ -139,7 +146,7 @@ interface NavItem {
         <div class="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
-            class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+            class="touch-target rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground active:scale-95"
             [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
             (click)="theme.toggle()"
           >
@@ -151,7 +158,7 @@ interface NavItem {
           </button>
           <button
             type="button"
-            class="touch-target rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+            class="touch-target rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground active:scale-95"
             aria-label="Account menu"
             (click)="moreOpen.set(true)"
           >
@@ -161,17 +168,17 @@ interface NavItem {
       </header>
 
       <main class="md:ml-60">
-        <div class="page-shell safe-pb-nav flex min-h-[calc(100dvh-3.5rem)] flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-10">
-          <div class="flex-1">
+        <div class="page-shell safe-pb-nav flex min-h-0 flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-8">
+          <div class="min-w-0 flex-1">
             <router-outlet />
           </div>
-          <app-footer class="mt-6 pb-3 md:pb-0" />
+          <app-footer class="mt-4 shrink-0 md:mt-6" />
         </div>
       </main>
 
       <!-- Mobile bottom navigation -->
       <nav
-        class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md md:hidden"
+        class="glass-chrome fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
         style="padding-bottom: var(--safe-bottom)"
         aria-label="Primary mobile"
       >
@@ -182,7 +189,7 @@ interface NavItem {
               routerLinkActive="text-primary"
               #rla="routerLinkActive"
               [attr.aria-current]="rla.isActive ? 'page' : null"
-              class="flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors"
+              class="flex flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium text-muted-foreground transition-[color,background-color,transform] duration-200 active:scale-95"
               [class.bg-primary-soft]="rla.isActive"
             >
               @switch (item.icon) {
@@ -196,8 +203,8 @@ interface NavItem {
           }
           <button
             type="button"
-            class="flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors"
-            [class]="moreActive() || moreOpen() ? 'text-primary' : 'text-muted-foreground'"
+            class="flex flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-medium transition-[color,background-color,transform] duration-200 active:scale-95"
+            [class]="moreActive() || moreOpen() ? 'bg-primary-soft text-primary' : 'text-muted-foreground'"
             aria-label="More menu"
             [attr.aria-expanded]="moreOpen()"
             (click)="moreOpen.set(true)"
@@ -217,6 +224,7 @@ export class AppShell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly categoryPrefs = inject(CategoryPreferencesService);
   private readonly fiscalYear = inject(FiscalYearService);
   private readonly onboarding = inject(OnboardingGuideService);
@@ -224,6 +232,7 @@ export class AppShell {
 
   protected readonly moreOpen = signal(false);
   protected readonly moreActive = signal(false);
+  protected readonly headerScrolled = signal(false);
 
   protected readonly primaryNav: readonly NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', short: 'Home', icon: 'dashboard', mobile: true },
@@ -245,6 +254,11 @@ export class AppShell {
         takeUntilDestroyed(),
       )
       .subscribe((e) => this.syncMoreActive(e.urlAfterRedirects));
+
+    const onScroll = () => this.headerScrolled.set(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    this.destroyRef.onDestroy(() => window.removeEventListener('scroll', onScroll));
   }
 
   private async bootstrapApp(): Promise<void> {

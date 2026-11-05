@@ -15,7 +15,7 @@ import { LucideX } from '@lucide/angular';
       <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
         <button
           type="button"
-          class="absolute inset-0 cursor-default bg-overlay backdrop-blur-sm"
+          class="motion-fade-in absolute inset-0 cursor-default bg-overlay backdrop-blur-sm"
           aria-label="Close dialog"
           tabindex="-1"
           (click)="closed.emit()"
@@ -24,7 +24,7 @@ import { LucideX } from '@lucide/angular';
           role="dialog"
           aria-modal="true"
           [attr.aria-label]="title()"
-          class="relative flex max-h-[96dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-md sm:max-h-[90dvh] sm:rounded-2xl"
+          class="motion-dialog-in relative flex max-h-[96dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-md sm:max-h-[90dvh] sm:rounded-2xl"
           [class]="widthClass()"
         >
           <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5 sm:py-4">
@@ -36,7 +36,7 @@ import { LucideX } from '@lucide/angular';
             </div>
             <button
               type="button"
-              class="-mr-2 -mt-1.5 touch-target rounded-lg text-muted transition-colors hover:bg-card-hover hover:text-foreground sm:-mt-1 sm:min-h-9 sm:min-w-9"
+              class="-mr-2 -mt-1.5 touch-target rounded-lg text-muted transition-colors hover:bg-card-hover hover:text-foreground active:scale-95 sm:-mt-1 sm:min-h-9 sm:min-w-9"
               aria-label="Close"
               (click)="closed.emit()"
             >

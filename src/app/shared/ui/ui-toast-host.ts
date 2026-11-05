@@ -7,13 +7,14 @@ import { ToastService } from '../../core/services/toast.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideCircleAlert, LucideCircleCheck, LucideInfo, LucideX],
   host: {
-    class: 'pointer-events-none fixed bottom-20 right-4 z-[60] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4',
+    class:
+      'pointer-events-none fixed bottom-20 right-4 z-[60] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4',
     'aria-live': 'polite',
   },
   template: `
     @for (toast of toasts.toasts(); track toast.id) {
       <div
-        class="pointer-events-auto flex items-start gap-3 rounded-xl border border-border bg-card p-3 text-sm shadow-xl"
+        class="motion-scale-in pointer-events-auto flex items-start gap-3 rounded-xl border border-border bg-card p-3 text-sm shadow-xl"
         role="status"
       >
         @switch (toast.kind) {
@@ -30,7 +31,7 @@ import { ToastService } from '../../core/services/toast.service';
         <p class="flex-1 text-foreground">{{ toast.message }}</p>
         <button
           type="button"
-          class="text-muted hover:text-foreground"
+          class="text-muted transition-colors hover:text-foreground active:scale-95"
           aria-label="Dismiss"
           (click)="toasts.dismiss(toast.id)"
         >

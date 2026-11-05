@@ -160,6 +160,7 @@
   html,
   body {
     height: 100%;
+    overflow-x: hidden;
   }
 
   body {
@@ -208,8 +209,13 @@
     color: var(--muted-foreground);
   }
 
+  /* Clearance for fixed mobile nav — keep tight to avoid extra scroll dead space. */
   .safe-pb-nav {
-    padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 1rem);
+    padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 0.25rem);
+
+    @media (min-width: 768px) {
+      padding-bottom: 0;
+    }
   }
 
   .page-shell {
@@ -218,5 +224,117 @@
 
   .touch-target {
     @apply inline-flex min-h-11 min-w-11 items-center justify-center;
+  }
+
+  /* Frosted sticky chrome (mobile header / bottom nav / sticky strips). */
+  .glass-chrome {
+    background-color: color-mix(in oklab, var(--surface) 72%, transparent);
+    border-color: color-mix(in oklab, var(--border) 80%, transparent);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--border) 55%, transparent);
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .glass-chrome-scrolled {
+    background-color: color-mix(in oklab, var(--surface) 88%, transparent);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--border) 70%, transparent),
+      0 8px 24px color-mix(in oklab, var(--background) 45%, transparent);
+  }
+
+  :root.light .glass-chrome {
+    background-color: color-mix(in oklab, var(--surface) 78%, transparent);
+  }
+
+  :root.light .glass-chrome-scrolled {
+    background-color: color-mix(in oklab, var(--surface) 92%, transparent);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--border) 80%, transparent),
+      0 8px 20px rgb(24 24 27 / 0.08);
+  }
+
+  /* Shared micro-motion (easing matches charts). */
+  .motion-fade-in {
+    animation: motion-fade-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .motion-rise {
+    animation: motion-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .motion-sheet-in {
+    animation: motion-sheet-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .motion-scale-in {
+    animation: motion-scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Sheet on mobile, soft scale on sm+. */
+  .motion-dialog-in {
+    animation: motion-sheet-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    @media (min-width: 640px) {
+      animation-name: motion-scale-in;
+      animation-duration: 0.35s;
+    }
+  }
+
+  .motion-delay-1 {
+    animation-delay: 0.06s;
+  }
+
+  .motion-delay-2 {
+    animation-delay: 0.12s;
+  }
+
+  .motion-delay-3 {
+    animation-delay: 0.18s;
+  }
+}
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-sheet-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

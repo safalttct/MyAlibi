@@ -36,6 +36,10 @@ export class CategoryPreferencesService {
     }
     try {
       const stored = await this.settings.getSetting<string[]>(SETTINGS_KEY);
+      // Don't clobber a toggle that landed while the fetch was in flight.
+      if (this.saving()) {
+        return;
+      }
       if (Array.isArray(stored) && stored.length > 0) {
         const valid = stored
           .map((c) => normalizeCategory(c as LeaveCategory))
@@ -63,21 +67,24 @@ export class CategoryPreferencesService {
       next.add('Casual Leave');
     }
     this.enabledIds.set(next);
-    await this.persist();
+    await this.persist(next);
   }
 
   async resetToDefaults(): Promise<void> {
-    this.enabledIds.set(new Set(DEFAULT_ENABLED_CATEGORIES));
-    await this.persist();
+    const next = new Set(DEFAULT_ENABLED_CATEGORIES);
+    this.enabledIds.set(next);
+    await this.persist(next);
   }
 
-  private async persist(): Promise<void> {
-    if (this.saving() || !this.auth.isAuthenticated()) {
+  private async persist(ids: ReadonlySet<string>): Promise<void> {
+    if (!this.auth.isAuthenticated()) {
       return;
     }
     this.saving.set(true);
     try {
-      await this.settings.setSetting(SETTINGS_KEY, [...this.enabledIds()]);
+      // Persist the snapshot passed in — don't re-read the signal after awaits,
+      // or a concurrent ensureLoaded() can overwrite and re-save the old list.
+      await this.settings.setSetting(SETTINGS_KEY, [...ids]);
     } finally {
       this.saving.set(false);
     }

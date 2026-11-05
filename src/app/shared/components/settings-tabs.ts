@@ -5,10 +5,10 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   selector: 'app-settings-tabs',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, RouterLinkActive],
-  host: { class: 'block' },
+  host: { class: 'block min-w-0 max-w-full overflow-hidden' },
   template: `
     <nav
-      class="-mx-4 flex gap-1 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-1 sm:px-1"
+      class="flex gap-1 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-1 [&::-webkit-scrollbar]:hidden"
       aria-label="Settings"
     >
       @for (tab of tabs; track tab.path) {

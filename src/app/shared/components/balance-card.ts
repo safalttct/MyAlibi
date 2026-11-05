@@ -12,7 +12,7 @@ import { UiProgress } from '../ui/ui-progress';
     <a
       [routerLink]="link()"
       [queryParams]="queryParams()"
-      class="group relative block overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
+      class="group relative block overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-card-hover hover:shadow-md active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
       [attr.aria-label]="ariaLabel()"
     >
       <div

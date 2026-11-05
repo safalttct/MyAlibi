@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
@@ -13,10 +13,12 @@ import { environment } from '../../../environments/environment';
         <span>&copy; {{ year }} MyAlibi</span>
         <span aria-hidden="true">·</span>
         <span>Developed for Tamimah Team</span>
-        <span aria-hidden="true">·</span>
-        <a routerLink="/settings/about" class="text-muted transition-colors hover:text-foreground hover:underline">
-          About
-        </a>
+        @if (showAbout()) {
+          <span aria-hidden="true">·</span>
+          <a routerLink="/settings/about" class="text-muted transition-colors hover:text-foreground hover:underline">
+            About
+          </a>
+        }
         <span aria-hidden="true">·</span>
         <span class="tabular-nums">v{{ version }}</span>
       </p>
@@ -24,6 +26,9 @@ import { environment } from '../../../environments/environment';
   `,
 })
 export class AppFooter {
+  /** Hide on guest surfaces (login) where About requires auth. */
+  readonly showAbout = input(true);
+
   protected readonly version = environment.version || '0.0.0';
   protected readonly year = new Date().getFullYear();
 }

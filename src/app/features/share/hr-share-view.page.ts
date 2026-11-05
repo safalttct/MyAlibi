@@ -1,8 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { LucideEye } from '@lucide/angular';
+import { LucideEye, LucideX } from '@lucide/angular';
 import {
+  LeaveCategory,
+  LeaveDuration,
   categoryMeta,
   isLeaveCategory,
   normalizeCategory,
@@ -13,11 +15,15 @@ import { AppFooter } from '../../shared/components/app-footer';
 import { AppLogo } from '../../shared/components/app-logo';
 import { ThemeToggle } from '../../shared/components/theme-toggle';
 import { UiBadge } from '../../shared/ui/ui-badge';
+import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
+import { UiField } from '../../shared/ui/ui-field';
+import { UiInput } from '../../shared/ui/ui-input';
+import { UiSelect } from '../../shared/ui/ui-select';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
 
-type RecordFilter = 'all' | 'leave' | 'wfh';
+type KindFilter = 'all' | 'leave' | 'wfh';
 
 @Component({
   selector: 'app-hr-share-view-page',
@@ -31,9 +37,14 @@ type RecordFilter = 'all' | 'leave' | 'wfh';
     UiBadge,
     UiSkeleton,
     UiEmptyState,
+    UiButton,
+    UiField,
+    UiInput,
+    UiSelect,
     LucideEye,
+    LucideX,
   ],
-  host: { class: 'block min-h-dvh bg-background' },
+  host: { class: 'block min-h-dvh overflow-x-hidden bg-background' },
   template: `
     <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <header class="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
@@ -119,27 +130,91 @@ type RecordFilter = 'all' | 'leave' | 'wfh';
 
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-foreground">Records</h2>
-          <div class="flex gap-1 rounded-lg border border-border bg-card p-0.5">
-            @for (f of filters; track f.id) {
-              <button
-                type="button"
-                class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
-                [class]="
-                  filter() === f.id
-                    ? 'bg-primary-soft text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-                (click)="filter.set(f.id)"
-              >
-                {{ f.label }}
+          <span class="text-xs text-muted tabular-nums">
+            {{ filteredRecords().length }} of {{ allRecords().length }} record(s)
+          </span>
+        </div>
+
+        <div class="mb-4 rounded-xl border border-border bg-card p-3 sm:p-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex gap-1 rounded-lg border border-border bg-background p-0.5" role="group" aria-label="Record kind">
+              @for (f of kindFilters; track f.id) {
+                <button
+                  type="button"
+                  class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+                  [class]="
+                    kind() === f.id
+                      ? 'bg-primary-soft text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  "
+                  (click)="setKind(f.id)"
+                >
+                  {{ f.label }}
+                </button>
+              }
+            </div>
+            @if (hasFilters()) {
+              <button uiButton variant="ghost" size="sm" type="button" (click)="clearFilters()">
+                Clear
               </button>
             }
+          </div>
+
+          @if (filterChips().length > 0) {
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              @for (chip of filterChips(); track chip.key) {
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border border-border bg-elevated/60 px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-card-hover"
+                  (click)="clearChip(chip.key)"
+                >
+                  {{ chip.label }}
+                  <svg lucideX size="12" class="opacity-60"></svg>
+                </button>
+              }
+            </div>
+          }
+
+          <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <ui-field label="Category">
+              <select uiSelect [value]="category()" (change)="category.set(val($event))">
+                <option value="">All categories</option>
+                @for (c of categoryOptions(); track c) {
+                  <option [value]="c">{{ labelFor(c) }}</option>
+                }
+              </select>
+            </ui-field>
+            <ui-field label="Duration">
+              <select uiSelect [value]="duration()" (change)="duration.set(val($event))">
+                <option value="">Any duration</option>
+                @for (d of durations; track d) {
+                  <option [value]="d">{{ d }}</option>
+                }
+                <option value="none">Needs review</option>
+              </select>
+            </ui-field>
+            <ui-field label="Month">
+              <input uiInput type="month" [value]="month()" (input)="month.set(val($event))" />
+            </ui-field>
           </div>
         </div>
 
         @if (filteredRecords().length === 0) {
           <ui-card>
-            <ui-empty-state title="No records" description="Nothing matched this filter for the current year." />
+            <ui-empty-state
+              [title]="allRecords().length === 0 ? 'No records' : 'No records match your filters'"
+              [description]="
+                allRecords().length === 0
+                  ? 'Nothing logged for the current year.'
+                  : 'Try clearing or adjusting the filters.'
+              "
+            >
+              @if (hasFilters()) {
+                <button uiButton size="sm" variant="outline" type="button" (click)="clearFilters()">
+                  Clear filters
+                </button>
+              }
+            </ui-empty-state>
           </ui-card>
         } @else {
           <ui-card [padded]="false">
@@ -204,15 +279,23 @@ export class HrShareViewPage {
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
   protected readonly snapshot = signal<HrShareSnapshotOk | null>(null);
-  protected readonly filter = signal<RecordFilter>('all');
 
-  protected readonly filters: { id: RecordFilter; label: string }[] = [
+  protected readonly kind = signal<KindFilter>('all');
+  protected readonly category = signal('');
+  protected readonly duration = signal('');
+  protected readonly month = signal('');
+
+  protected readonly kindFilters: { id: KindFilter; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'leave', label: 'Leave' },
     { id: 'wfh', label: 'WFH' },
   ];
 
+  protected readonly durations: LeaveDuration[] = ['Full Day', 'Half Day'];
+
   protected readonly balances = computed(() => this.snapshot()?.balances ?? []);
+  protected readonly allRecords = computed(() => this.snapshot()?.records ?? []);
+
   protected readonly fyLabel = computed(() => {
     const snap = this.snapshot();
     if (!snap) {
@@ -221,21 +304,99 @@ export class HrShareViewPage {
     return fiscalYearLabel({ start: snap.period_start, end: snap.period_end });
   });
 
+  /** Categories that appear in this snapshot (records or balances). */
+  protected readonly categoryOptions = computed(() => {
+    const ids = new Set<string>();
+    for (const b of this.balances()) {
+      ids.add(normalizeCategory(b.category as LeaveCategory));
+    }
+    for (const r of this.allRecords()) {
+      ids.add(normalizeCategory(r.category as LeaveCategory));
+    }
+    return [...ids].sort((a, b) => this.labelFor(a).localeCompare(this.labelFor(b)));
+  });
+
+  protected readonly hasFilters = computed(
+    () => !!(this.kind() !== 'all' || this.category() || this.duration() || this.month()),
+  );
+
+  protected readonly filterChips = computed(() => {
+    const chips: { key: string; label: string }[] = [];
+    if (this.kind() === 'leave') chips.push({ key: 'kind', label: 'Leave only' });
+    if (this.kind() === 'wfh') chips.push({ key: 'kind', label: 'WFH only' });
+    if (this.category()) chips.push({ key: 'category', label: this.labelFor(this.category()) });
+    if (this.duration() === 'none') chips.push({ key: 'duration', label: 'Needs review' });
+    else if (this.duration()) chips.push({ key: 'duration', label: this.duration() });
+    if (this.month()) chips.push({ key: 'month', label: `Month: ${this.month()}` });
+    return chips;
+  });
+
   protected readonly filteredRecords = computed(() => {
-    const rows = this.snapshot()?.records ?? [];
-    const mode = this.filter();
-    if (mode === 'all') {
-      return rows;
-    }
-    if (mode === 'wfh') {
-      return rows.filter((r) => normalizeCategory(r.category as never) === 'Work From Home');
-    }
-    return rows.filter((r) => normalizeCategory(r.category as never) !== 'Work From Home');
+    const kind = this.kind();
+    const category = this.category();
+    const duration = this.duration();
+    const month = this.month();
+
+    return this.allRecords().filter((r) => {
+      const cat = normalizeCategory(r.category as LeaveCategory);
+      const isWfh = cat === 'Work From Home';
+
+      if (kind === 'wfh' && !isWfh) return false;
+      if (kind === 'leave' && isWfh) return false;
+      if (category && cat !== category) return false;
+
+      if (duration === 'none') {
+        if (r.duration) return false;
+      } else if (duration && r.duration !== duration) {
+        return false;
+      }
+
+      if (month && !r.date.startsWith(month)) return false;
+      return true;
+    });
   });
 
   constructor() {
     const token = this.route.snapshot.paramMap.get('token') ?? '';
     void this.load(token);
+  }
+
+  protected val(event: Event): string {
+    return (event.target as HTMLInputElement | HTMLSelectElement).value;
+  }
+
+  protected setKind(next: KindFilter): void {
+    this.kind.set(next);
+    // Kind and a specific opposing category conflict — clear category when switching kinds.
+    const cat = this.category();
+    if (!cat) return;
+    const isWfh = cat === 'Work From Home';
+    if (next === 'wfh' && !isWfh) this.category.set('');
+    if (next === 'leave' && isWfh) this.category.set('');
+  }
+
+  protected clearFilters(): void {
+    this.kind.set('all');
+    this.category.set('');
+    this.duration.set('');
+    this.month.set('');
+  }
+
+  protected clearChip(key: string): void {
+    switch (key) {
+      case 'kind':
+        this.kind.set('all');
+        break;
+      case 'category':
+        this.category.set('');
+        break;
+      case 'duration':
+        this.duration.set('');
+        break;
+      case 'month':
+        this.month.set('');
+        break;
+    }
   }
 
   protected labelFor(category: string): string {

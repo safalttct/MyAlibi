@@ -43,7 +43,7 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
     UiPasswordInput,
   ],
   template: `
-    <div class="relative flex min-h-dvh flex-col overflow-hidden bg-background px-4 py-10 pb-[max(2.5rem,var(--safe-bottom))]">
+    <div class="relative flex min-h-dvh flex-col overflow-x-hidden bg-background px-4 py-8 pb-[max(1.5rem,var(--safe-bottom))] sm:py-10">
       <div
         class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--primary-soft),_transparent_55%)]"
         aria-hidden="true"
@@ -225,7 +225,7 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
         </section>
       }
       </div>
-      <app-footer class="mx-auto w-full max-w-sm pt-6" />
+      <app-footer class="mx-auto w-full max-w-sm pt-6" [showAbout]="false" />
     </div>
   `,
 })

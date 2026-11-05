@@ -4,8 +4,9 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'dan
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors active:scale-[0.98] ' +
-  'select-none whitespace-nowrap disabled:pointer-events-none disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-lg font-medium ' +
+  'transition-[color,background-color,border-color,transform,box-shadow] duration-150 ease-out ' +
+  'active:scale-[0.98] select-none whitespace-nowrap disabled:pointer-events-none disabled:opacity-50';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
