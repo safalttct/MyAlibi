@@ -15,7 +15,7 @@ import {
 } from '../../core/services/leave-calculation';
 import { LeaveCalculationService } from '../../core/services/leave-calculation.service';
 import { ToastService } from '../../core/services/toast.service';
-import { todayIso } from '../../core/utils/dates';
+import { fiscalYearLabel, inRange, todayIso } from '../../core/utils/dates';
 import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
@@ -60,7 +60,7 @@ const TYPE_LABEL: Record<CompOffType, string> = {
   template: `
     <app-page-header
       title="Comp Off"
-      subtitle="After PM approval, credit earned days here — they expire in {{ validityDays }} days"
+      subtitle="{{ fySubtitle() }} — earned days expire in {{ validityDays }} days"
     >
       <button uiButton size="sm" (click)="openForm('earned')"><svg lucidePlus size="14"></svg> Earn</button>
       <button uiButton variant="outline" size="sm" (click)="openForm('used')"><svg lucideMinus size="14"></svg> Use</button>
@@ -90,7 +90,7 @@ const TYPE_LABEL: Record<CompOffType, string> = {
     <ui-card title="Ledger" description="Newest first, with running balance" [padded]="false">
       @if (loading()) {
         <div class="space-y-2 p-3 sm:p-4">@for (n of [1, 2, 3, 4]; track n) { <ui-skeleton class="h-14 md:h-10" /> }</div>
-      } @else if (ledger().length === 0) {
+      } @else if (ledger().length === 0 && opening() === 0) {
         <div class="p-4 sm:p-6">
           <ui-empty-state
             title="No comp-off activity"
@@ -264,21 +264,48 @@ export class CompOffPage {
     { initialValue: todayIso() },
   );
 
-  protected readonly opening = computed(() => this.balance()?.opening_balance ?? 0);
+  protected readonly opening = computed(() => Number(this.balance()?.opening_balance ?? 0));
+  private readonly period = computed(() => {
+    const bal = this.balance();
+    if (bal) {
+      return { start: bal.period_start, end: bal.period_end };
+    }
+    const today = todayIso();
+    const year = Number(today.slice(0, 4));
+    const month = Number(today.slice(5, 7));
+    const startYear = month >= 4 ? year : year - 1;
+    return { start: `${startYear}-04-01`, end: `${startYear + 1}-03-31` };
+  });
+  protected readonly fySubtitle = computed(
+    () => `${fiscalYearLabel(this.period())} ledger`,
+  );
+  private readonly periodTransactions = computed(() => {
+    const { start, end } = this.period();
+    return this.transactions().filter((t) => inRange(t.transaction_date, start, end));
+  });
   protected readonly ledger = computed(() =>
-    this.calc.compOffLedger(this.transactions(), this.opening()),
+    this.calc.compOffLedger(this.transactions(), this.opening(), undefined, this.period()),
   );
   protected readonly ledgerDesc = computed(() => [...this.ledger()].reverse());
   protected readonly formTitle = computed(() => TYPE_LABEL[this.formType() ?? 'earned']);
 
   protected readonly summary = computed(() => {
     const today = todayIso();
+    const { start, end } = this.period();
     const bal = this.calc.computeCompOffBalance(
-      { category: 'Compensatory Leave', period_start: `${today.slice(0, 4)}-01-01`, period_end: `${today.slice(0, 4)}-12-31`, opening_balance: this.opening(), annual_allocation: 0, carry_forward_allocation: 0, carry_forward_expiry: null },
-      this.transactions(),
+      {
+        category: 'Compensatory Leave',
+        period_start: start,
+        period_end: end,
+        opening_balance: this.opening(),
+        annual_allocation: 0,
+        carry_forward_allocation: 0,
+        carry_forward_expiry: null,
+      },
+      this.periodTransactions(),
       today,
     );
-    const expiring = expiringCompOffLots(this.transactions(), today, this.alertDays).reduce(
+    const expiring = expiringCompOffLots(this.periodTransactions(), today, this.alertDays).reduce(
       (s, lot) => s + lot.days,
       0,
     );
@@ -336,7 +363,13 @@ export class CompOffPage {
     try {
       const [transactions, balances] = await Promise.all([this.compOff.list(), this.balances.fetchBalances()]);
       this.transactions.set(transactions);
-      this.balance.set(balances.find((b) => b.category === 'Compensatory Leave') ?? null);
+      const today = todayIso();
+      const compRows = balances.filter((b) => b.category === 'Compensatory Leave');
+      this.balance.set(
+        compRows.find((b) => inRange(today, b.period_start, b.period_end)) ??
+          [...compRows].sort((a, b) => b.period_start.localeCompare(a.period_start))[0] ??
+          null,
+      );
       this.error.set(null);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not load the comp-off ledger.');

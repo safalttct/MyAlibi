@@ -73,7 +73,8 @@ export class LeaveCalculationService {
     transactions: readonly CompOffTransaction[],
     openingBalance: number,
     asOf?: string,
+    period?: { start: string; end: string },
   ): LedgerRow[] {
-    return buildCompOffLedger(transactions, openingBalance, asOf);
+    return buildCompOffLedger(transactions, openingBalance, asOf, period);
   }
 }

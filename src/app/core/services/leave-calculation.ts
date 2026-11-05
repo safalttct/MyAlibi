@@ -129,7 +129,7 @@ function makeBalance(
   };
 }
 
-/** Compensatory leave balance is derived purely from the ledger (+ opening balance). */
+/** Compensatory leave balance is derived from the FY ledger (+ that year's opening). */
 export function computeCompOffBalance(
   allocation: CalcAllocation | undefined,
   transactions: readonly CalcTransaction[],
@@ -150,6 +150,9 @@ export function computeCompOffBalance(
   let used = 0;
   let signed = 0;
   for (const tx of transactions) {
+    if (!inRange(tx.transaction_date, base.period_start, base.period_end)) {
+      continue;
+    }
     if (tx.type === 'earned' && (!tx.expiry_date || tx.expiry_date >= asOf)) {
       earnedAndPositive += tx.days;
     } else if (tx.type === 'adjustment' && tx.days > 0) {
@@ -324,8 +327,12 @@ export function buildCompOffLedger(
   transactions: readonly CompOffTransaction[],
   openingBalance: number,
   asOf: string = todayIso(),
+  period?: { start: string; end: string },
 ): LedgerRow[] {
-  const sorted = [...transactions].sort(
+  const scoped = period
+    ? transactions.filter((t) => inRange(t.transaction_date, period.start, period.end))
+    : transactions;
+  const sorted = [...scoped].sort(
     (a, b) =>
       a.transaction_date.localeCompare(b.transaction_date) ||
       a.created_at.localeCompare(b.created_at),

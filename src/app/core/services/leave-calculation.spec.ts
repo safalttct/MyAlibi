@@ -122,6 +122,24 @@ describe('leave calculation', () => {
     expect(comp.remaining).toBe(3);
   });
 
+  it('scopes Compensatory Leave to the allocation financial year', () => {
+    const [comp] = computeBalances(
+      [allocation('Compensatory Leave', 0, { opening_balance: 2 })],
+      [],
+      {
+        asOf: '2026-11-05',
+        compOffTransactions: [
+          { type: 'used', days: 1, expiry_date: null, transaction_date: '2025-09-08' }, // prior FY
+          { type: 'used', days: 1, expiry_date: null, transaction_date: '2025-09-09' }, // prior FY
+          { type: 'used', days: 1, expiry_date: null, transaction_date: '2026-08-21' },
+          { type: 'used', days: 1, expiry_date: null, transaction_date: '2026-09-03' },
+        ],
+      },
+    );
+    expect(comp.used).toBe(2);
+    expect(comp.remaining).toBe(0);
+  });
+
   it('computes monthly usage and separates WFH from leave', () => {
     const records: CalcRecord[] = [
       record('Work From Home', '2026-04-01', 'Full Day'),
