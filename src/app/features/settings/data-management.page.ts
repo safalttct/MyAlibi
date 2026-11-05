@@ -10,6 +10,7 @@ import {
   PreviewRowState,
 } from '../../core/services/csv-import.service';
 import { LeaveRecordsService } from '../../core/services/leave-records.service';
+import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { SettingsService, parseBackup } from '../../core/services/settings.service';
 import { ToastService } from '../../core/services/toast.service';
 import { serializeCsv } from '../../core/utils/csv';
@@ -196,6 +197,7 @@ const STATE_LABEL: Record<PreviewRowState, string> = {
 export class DataManagementPage {
   private readonly importer = inject(CsvImportService);
   private readonly records = inject(LeaveRecordsService);
+  private readonly store = inject(LeaveRecordsStore);
   private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
 
@@ -282,6 +284,7 @@ export class DataManagementPage {
       const result = await this.importer.commit(preview, 'csv');
       this.toast.success(`Imported ${result.inserted} row(s); skipped ${result.skipped} duplicate(s).`);
       this.preview.set(null);
+      await this.store.refresh({ notify: true });
       await this.loadBatches();
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : 'Import failed.');
@@ -381,6 +384,7 @@ export class DataManagementPage {
         `Restored ${s.records} record(s), ${s.allocations} allocation(s), ${s.compOff} comp-off entr${s.compOff === 1 ? 'y' : 'ies'}.`,
       );
       this.clearBackup();
+      await this.store.refresh({ notify: true });
       await this.loadBatches();
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : 'Restore failed.');

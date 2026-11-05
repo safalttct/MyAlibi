@@ -24,7 +24,7 @@ import {
   isLeaveCategory,
 } from '../../core/models/leave.models';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
-import { LeaveRecordsService } from '../../core/services/leave-records.service';
+import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { ToastService } from '../../core/services/toast.service';
 import { serializeCsv } from '../../core/utils/csv';
 import { fromIsoDate } from '../../core/utils/dates';
@@ -36,9 +36,9 @@ import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
-import { UiConfirmDialog } from '../../shared/ui/ui-confirm-dialog';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
 import { UiField } from '../../shared/ui/ui-field';
+import { UiDateField } from '../../shared/ui/ui-date-field';
 import { UiInput } from '../../shared/ui/ui-input';
 import { UiSelect } from '../../shared/ui/ui-select';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
@@ -55,11 +55,11 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
     UiBadge,
     UiButton,
     UiInput,
+    UiDateField,
     UiSelect,
     UiField,
     UiSkeleton,
     UiEmptyState,
-    UiConfirmDialog,
     LeaveRecordDialog,
     ExportMenu,
     LucidePlus,
@@ -168,10 +168,22 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
             />
           </ui-field>
           <ui-field label="From date" hint="Clears month when set">
-            <input uiInput type="date" [value]="from()" (input)="setFrom(val($event))" [disabled]="!!month()" />
+            <ui-date-field
+              label="From date"
+              placeholder="From"
+              [value]="from() || null"
+              [disabled]="!!month()"
+              (valueChange)="setFrom($event)"
+            />
           </ui-field>
           <ui-field label="To date">
-            <input uiInput type="date" [value]="to()" (input)="setTo(val($event))" [disabled]="!!month()" />
+            <ui-date-field
+              label="To date"
+              placeholder="To"
+              [value]="to() || null"
+              [disabled]="!!month()"
+              (valueChange)="setTo($event)"
+            />
           </ui-field>
         </div>
       </div>
@@ -228,7 +240,7 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
                   </td>
                   <td class="px-4 py-3 text-right whitespace-nowrap">
                     <button uiButton variant="ghost" size="icon" [attr.aria-label]="'Edit ' + r.title" (click)="openEdit(r)"><svg lucidePencil size="14"></svg></button>
-                    <button uiButton variant="ghost" size="icon" [attr.aria-label]="'Delete ' + r.title" (click)="askDelete(r)"><svg lucideTrash2 size="14"></svg></button>
+                    <button uiButton variant="ghost" size="icon" [attr.aria-label]="'Delete ' + r.title" (click)="remove(r)"><svg lucideTrash2 size="14"></svg></button>
                   </td>
                 </tr>
               }
@@ -252,7 +264,7 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
               </div>
               <div class="flex shrink-0">
                 <button uiButton variant="ghost" size="icon" [attr.aria-label]="'Edit ' + r.title" (click)="openEdit(r)"><svg lucidePencil size="16"></svg></button>
-                <button uiButton variant="ghost" size="icon" class="hover:text-danger" [attr.aria-label]="'Delete ' + r.title" (click)="askDelete(r)"><svg lucideTrash2 size="16"></svg></button>
+                <button uiButton variant="ghost" size="icon" class="hover:text-danger" [attr.aria-label]="'Delete ' + r.title" (click)="remove(r)"><svg lucideTrash2 size="16"></svg></button>
               </div>
             </li>
           }
@@ -272,22 +284,11 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
       [open]="dialogOpen()"
       [record]="editing()"
       (closed)="dialogOpen.set(false)"
-      (saved)="load()"
-    />
-
-    <ui-confirm-dialog
-      [open]="deleting() !== null"
-      title="Delete record?"
-      [message]="'Delete “' + (deleting()?.title ?? '') + '”? This cannot be undone.'"
-      confirmLabel="Delete"
-      [loading]="busy()"
-      (cancelled)="deleting.set(null)"
-      (confirmed)="confirmDelete()"
     />
   `,
 })
 export class LeaveRecordsPage {
-  private readonly service = inject(LeaveRecordsService);
+  private readonly store = inject(LeaveRecordsStore);
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -305,7 +306,7 @@ export class LeaveRecordsPage {
 
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly all = signal<LeaveRecord[]>([]);
+  protected readonly all = this.store.records;
 
   protected readonly search = signal('');
   protected readonly category = signal('');
@@ -320,8 +321,6 @@ export class LeaveRecordsPage {
 
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<LeaveRecord | null>(null);
-  protected readonly deleting = signal<LeaveRecord | null>(null);
-  protected readonly busy = signal(false);
   protected readonly exportingPdf = signal(false);
 
   private readonly queryCategory = toSignal(
@@ -420,7 +419,7 @@ export class LeaveRecordsPage {
 
   protected async load(): Promise<void> {
     try {
-      this.all.set(await this.service.list());
+      await this.store.ensureLoaded();
       this.error.set(null);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not load records.');
@@ -528,25 +527,11 @@ export class LeaveRecordsPage {
     this.dialogOpen.set(true);
   }
 
-  protected askDelete(record: LeaveRecord): void {
-    this.deleting.set(record);
-  }
-
-  protected async confirmDelete(): Promise<void> {
-    const record = this.deleting();
-    if (!record) {
-      return;
-    }
-    this.busy.set(true);
+  protected async remove(record: LeaveRecord): Promise<void> {
     try {
-      await this.service.delete(record.id);
-      this.toast.success('Record deleted');
-      this.deleting.set(null);
-      await this.load();
-    } catch (e) {
-      this.toast.error(e instanceof Error ? e.message : 'Could not delete the record.');
-    } finally {
-      this.busy.set(false);
+      await this.store.remove(record);
+    } catch {
+      // Store already toasted.
     }
   }
 

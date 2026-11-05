@@ -4,7 +4,7 @@ import { addMonths, format, startOfMonth } from 'date-fns';
 import { holidaysOn, PublicHoliday } from '../../core/data/public-holidays';
 import { LeaveCategory, LeaveRecord, categoryMeta } from '../../core/models/leave.models';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
-import { LeaveRecordsService } from '../../core/services/leave-records.service';
+import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { WEEKDAYS_MON_FIRST, buildMonthGrid } from '../../core/utils/calendar-grid';
 import { fromIsoDate, todayIso } from '../../core/utils/dates';
 import { LeaveRecordDialog } from '../../shared/components/leave-record-dialog';
@@ -168,12 +168,11 @@ type CalendarFilter = '' | LeaveCategory | 'holiday';
       [defaultDate]="defaultDate()"
       [defaultCategory]="leaveFilterCategory()"
       (closed)="dialogOpen.set(false)"
-      (saved)="load()"
     />
   `,
 })
 export class CalendarPage {
-  private readonly service = inject(LeaveRecordsService);
+  private readonly store = inject(LeaveRecordsStore);
   private readonly prefs = inject(CategoryPreferencesService);
 
   protected readonly categories = this.prefs.enabledCategories;
@@ -182,7 +181,7 @@ export class CalendarPage {
 
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
-  private readonly records = signal<LeaveRecord[]>([]);
+  private readonly records = this.store.records;
   protected readonly month = signal(startOfMonth(new Date()));
   protected readonly filter = signal<CalendarFilter>('');
 
@@ -238,7 +237,7 @@ export class CalendarPage {
 
   protected async load(): Promise<void> {
     try {
-      this.records.set(await this.service.list());
+      await this.store.ensureLoaded();
       this.error.set(null);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not load records.');

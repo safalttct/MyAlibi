@@ -43,11 +43,7 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
     UiPasswordInput,
   ],
   template: `
-    <div class="relative flex min-h-dvh flex-col overflow-x-hidden bg-background px-4 py-8 pb-[max(1.5rem,var(--safe-bottom))] sm:py-10">
-      <div
-        class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--primary-soft),_transparent_55%)]"
-        aria-hidden="true"
-      ></div>
+    <div class="surface-ambient relative flex min-h-dvh flex-col overflow-x-hidden bg-background px-4 py-8 pb-[max(1.5rem,var(--safe-bottom))] sm:py-10">
       <div class="absolute top-4 right-4 z-10 sm:top-6 sm:right-6">
         <app-theme-toggle />
       </div>
@@ -57,7 +53,7 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
           <div class="mb-6 flex justify-center">
             <app-logo class="[&_img]:object-center" size="xl" />
           </div>
-          <h1 class="text-lg font-semibold tracking-tight text-foreground">Supabase not configured</h1>
+          <h1 class="font-display text-lg font-semibold tracking-tight text-foreground">Supabase not configured</h1>
           <p class="mt-2 text-sm text-muted">
             Set <code class="rounded bg-elevated px-1 py-0.5 text-xs">NG_APP_SUPABASE_URL</code> and
             <code class="rounded bg-elevated px-1 py-0.5 text-xs">NG_APP_SUPABASE_PUBLISHABLE_KEY</code>.
@@ -72,6 +68,7 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
         <section class="w-full max-w-sm">
           <div class="mb-8 flex flex-col items-center gap-3 text-center">
             <app-logo class="[&_img]:mx-auto [&_img]:object-center" size="xl" />
+            <h1 class="font-display text-2xl font-semibold tracking-tight text-foreground">MyAlibi</h1>
             <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
           </div>
 

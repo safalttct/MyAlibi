@@ -168,7 +168,9 @@ interface NavItem {
       </header>
 
       <main class="md:ml-60">
-        <div class="page-shell safe-pb-nav flex min-h-0 flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-8">
+        <div
+          class="surface-ambient page-shell safe-pb-nav flex min-h-0 flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-8"
+        >
           <div class="min-w-0 flex-1">
             <router-outlet />
           </div>

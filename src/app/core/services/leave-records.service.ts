@@ -32,13 +32,23 @@ export class LeaveRecordsService {
   }
 
   async create(input: LeaveRecordInput): Promise<LeaveRecord> {
-    const payload = {
+    const rows = await this.createMany([input]);
+    return rows[0];
+  }
+
+  /** Insert many rows in one request so Comp Off triggers run together. */
+  async createMany(inputs: LeaveRecordInput[]): Promise<LeaveRecord[]> {
+    if (inputs.length === 0) {
+      return [];
+    }
+    const userId = this.auth.requireUserId();
+    const payload = inputs.map((input) => ({
       ...this.toPayload(input),
-      user_id: this.auth.requireUserId(),
-    };
+      user_id: userId,
+    }));
     return unwrap(
-      await this.supabase.client.from(TABLE).insert(payload).select('*').single(),
-    ) as LeaveRecord;
+      await this.supabase.client.from(TABLE).insert(payload).select('*'),
+    ) as LeaveRecord[];
   }
 
   async update(id: string, input: Partial<LeaveRecordInput>): Promise<LeaveRecord> {
@@ -54,6 +64,29 @@ export class LeaveRecordsService {
 
   async delete(id: string): Promise<void> {
     unwrap(await this.supabase.client.from(TABLE).delete().eq('id', id));
+  }
+
+  /** Re-insert a previously deleted row (same id) so Undo can restore Comp Off links. */
+  async restore(record: LeaveRecord): Promise<LeaveRecord> {
+    this.auth.requireUserId();
+    return unwrap(
+      await this.supabase.client
+        .from(TABLE)
+        .insert({
+          id: record.id,
+          user_id: record.user_id,
+          title: record.title,
+          category: record.category,
+          date: record.date,
+          duration: record.duration,
+          notes: record.notes,
+          status: record.status,
+          source_key: record.source_key,
+          import_batch_id: record.import_batch_id,
+        })
+        .select('*')
+        .single(),
+    ) as LeaveRecord;
   }
 
   /** Strips `days` (generated column) and undefined values from write payloads. */

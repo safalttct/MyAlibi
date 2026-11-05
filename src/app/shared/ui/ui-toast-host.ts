@@ -28,10 +28,19 @@ import { ToastService } from '../../core/services/toast.service';
             <svg lucideInfo size="18" class="mt-0.5 shrink-0 text-accent"></svg>
           }
         }
-        <p class="flex-1 text-foreground">{{ toast.message }}</p>
+        <p class="min-w-0 flex-1 text-foreground">{{ toast.message }}</p>
+        @if (toast.action; as action) {
+          <button
+            type="button"
+            class="shrink-0 text-xs font-semibold text-primary transition-colors hover:underline active:scale-95"
+            (click)="runAction(toast.id, action.run)"
+          >
+            {{ action.label }}
+          </button>
+        }
         <button
           type="button"
-          class="text-muted transition-colors hover:text-foreground active:scale-95"
+          class="shrink-0 text-muted transition-colors hover:text-foreground active:scale-95"
           aria-label="Dismiss"
           (click)="toasts.dismiss(toast.id)"
         >
@@ -43,4 +52,9 @@ import { ToastService } from '../../core/services/toast.service';
 })
 export class UiToastHost {
   protected readonly toasts = inject(ToastService);
+
+  protected runAction(id: number, run: () => void | Promise<void>): void {
+    this.toasts.dismiss(id);
+    void Promise.resolve(run());
+  }
 }

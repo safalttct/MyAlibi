@@ -12,13 +12,19 @@ import { format } from 'date-fns';
 import {
   CATEGORIES,
   CategoryMeta,
+  CompOffTransaction,
   LeaveBalance,
   MonthlyUsageRow,
 } from '../../core/models/leave.models';
 import { BalanceService } from '../../core/services/balance.service';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
+import { CompOffService } from '../../core/services/comp-off.service';
+import { anomalyHints, yearNarrative } from '../../core/services/insights';
+import { expiringCompOffLots } from '../../core/services/leave-calculation';
+import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { ToastService } from '../../core/services/toast.service';
-import { DateRange, fiscalYearRange, fromIsoDate, monthStarts } from '../../core/utils/dates';
+import { DateRange, fiscalYearRange, fromIsoDate, monthStarts, todayIso } from '../../core/utils/dates';
+import { AnomalyHintsPanel, YearNarrativePanel } from '../../shared/components/insight-panels';
 import { PageHeader } from '../../shared/components/page-header';
 import { ChartSeries } from '../../shared/ui/chart-utils';
 import { UiBarChart } from '../../shared/ui/ui-bar-chart';
@@ -62,6 +68,8 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
     UiEmptyState,
     UiBarChart,
     UiLineChart,
+    AnomalyHintsPanel,
+    YearNarrativePanel,
     LucideChartColumn,
     LucideTrendingUp,
     LucideTrendingDown,
@@ -110,6 +118,13 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
         <ui-skeleton class="h-48" />
       </div>
     } @else {
+      <div class="mb-4 grid gap-3">
+        <app-year-narrative [story]="yearStory()" />
+        @if (anomalies().length > 0) {
+          <app-anomaly-hints [hints]="anomalies()" />
+        }
+      </div>
+
       <!-- Summary -->
       <section class="mb-4 grid grid-cols-2 gap-2.5 sm:mb-5 sm:grid-cols-4 sm:gap-3" aria-label="Summary">
         <article class="rounded-xl border border-border bg-card p-3.5 sm:p-4">
@@ -293,6 +308,8 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
 })
 export class AnalyticsPage {
   private readonly balanceService = inject(BalanceService);
+  private readonly store = inject(LeaveRecordsStore);
+  private readonly compOffService = inject(CompOffService);
   private readonly prefs = inject(CategoryPreferencesService);
   private readonly toast = inject(ToastService);
 
@@ -308,6 +325,8 @@ export class AnalyticsPage {
   protected readonly rows = signal<MonthlyUsageRow[]>([]);
   protected readonly previousRows = signal<MonthlyUsageRow[]>([]);
   private readonly balances = signal<LeaveBalance[]>([]);
+  private readonly records = this.store.records;
+  private readonly compOffTx = signal<CompOffTransaction[]>([]);
   private requestId = 0;
 
   protected readonly range = computed(() => rangeFor(this.mode(), this.year()));
@@ -429,6 +448,32 @@ export class AnalyticsPage {
     ];
   });
 
+  protected readonly anomalies = computed(() => {
+    const range = this.range();
+    return anomalyHints(this.records(), todayIso(), range);
+  });
+
+  protected readonly yearStory = computed(() => {
+    const range = this.range();
+    const asOf = todayIso();
+    const lots = expiringCompOffLots(this.compOffTx(), asOf).filter(
+      (lot) => lot.expiry_date >= range.start && lot.expiry_date <= range.end,
+    );
+    return yearNarrative({
+      periodStart: range.start,
+      periodEnd: range.end,
+      asOf,
+      balances: this.utilization().map((u) => ({
+        category: u.meta.id,
+        label: u.meta.label,
+        remaining: Number(u.balance?.remaining ?? 0),
+        used: Number(u.balance?.used ?? 0),
+        total: Number(u.balance?.total_available ?? 0),
+      })),
+      compOffExpiring: lots.map((lot) => ({ days: lot.days, expiry: lot.expiry_date })),
+    });
+  });
+
   protected readonly totals = computed(() => {
     const perMonth = new Map<string, number>();
     let wfh = 0;
@@ -455,7 +500,16 @@ export class AnalyticsPage {
     effect(() => {
       const range = this.range();
       const previous = this.previousRange();
-      untracked(() => void this.load(range, previous));
+      untracked(() => void this.load(range, previous, true));
+    });
+    effect(() => {
+      const n = this.store.changes();
+      if (n === 0) {
+        return;
+      }
+      const range = this.range();
+      const previous = this.previousRange();
+      untracked(() => void this.load(range, previous, false));
     });
   }
 
@@ -467,15 +521,19 @@ export class AnalyticsPage {
     this.year.set(Number((event.target as HTMLSelectElement).value));
   }
 
-  private async load(range: DateRange, previous: DateRange): Promise<void> {
+  private async load(range: DateRange, previous: DateRange, showSkeleton: boolean): Promise<void> {
     const id = ++this.requestId;
-    this.loading.set(true);
+    if (showSkeleton) {
+      this.loading.set(true);
+    }
     try {
       await this.prefs.ensureLoaded();
-      const [rows, previousRows, balances] = await Promise.all([
+      await this.store.ensureLoaded();
+      const [rows, previousRows, balances, compOff] = await Promise.all([
         this.balanceService.monthlyUsage(range.start, range.end),
         this.balanceService.monthlyUsage(previous.start, previous.end),
         this.balanceService.fetchBalances(),
+        this.compOffService.list(),
       ]);
       if (id !== this.requestId) {
         return;
@@ -483,6 +541,7 @@ export class AnalyticsPage {
       this.rows.set(rows);
       this.previousRows.set(previousRows);
       this.balances.set(balances);
+      this.compOffTx.set(compOff);
       this.error.set(null);
     } catch (e) {
       if (id === this.requestId) {

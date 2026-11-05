@@ -24,15 +24,21 @@ export class UiCard {
   readonly description = input<string>('');
   readonly padded = input(true);
   readonly interactive = input(false);
+  /** Quiet regions: softer border, no elevation — for layout sections. */
+  readonly variant = input<'default' | 'quiet'>('default');
 
-  protected readonly classes = computed(
-    () =>
-      'block rounded-xl border border-border bg-card text-foreground ' +
-      'shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out ' +
+  protected readonly classes = computed(() => {
+    const quiet = this.variant() === 'quiet';
+    return (
+      'block rounded-xl text-foreground transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out ' +
+      (quiet
+        ? 'border border-border/60 bg-transparent '
+        : 'border border-border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.05)] ') +
       (this.interactive()
         ? 'hover:-translate-y-0.5 hover:bg-card-hover hover:shadow-md active:translate-y-0'
-        : ''),
-  );
+        : '')
+    );
+  });
 
   protected readonly bodyClass = computed(() =>
     this.padded() ? (this.title() ? 'p-4 pt-3 sm:p-5 sm:pt-4' : 'p-4 sm:p-5') : '',

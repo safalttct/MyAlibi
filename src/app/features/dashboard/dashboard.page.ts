@@ -1,5 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   LucideChevronLeft,
@@ -23,7 +31,6 @@ import {
 import { BalanceService } from '../../core/services/balance.service';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { CompOffService } from '../../core/services/comp-off.service';
-import { LeaveRecordsService } from '../../core/services/leave-records.service';
 import {
   COMP_OFF_EXPIRY_ALERT_DAYS,
   COMP_OFF_VALIDITY_DAYS,
@@ -32,10 +39,13 @@ import {
   negativeWarnings,
   summarizeUsage,
 } from '../../core/services/leave-calculation';
+import { anomalyHints, yearNarrative } from '../../core/services/insights';
+import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { ToastService } from '../../core/services/toast.service';
 import { WEEKDAYS_MON_FIRST, buildMonthGrid } from '../../core/utils/calendar-grid';
-import { fromIsoDate, inRange, todayIso } from '../../core/utils/dates';
+import { fiscalYearRange, fromIsoDate, inRange, todayIso } from '../../core/utils/dates';
 import { BalanceCard } from '../../shared/components/balance-card';
+import { AnomalyHintsPanel, YearNarrativePanel } from '../../shared/components/insight-panels';
 import { LeaveRecordDialog } from '../../shared/components/leave-record-dialog';
 import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
@@ -49,6 +59,31 @@ interface BalanceRow {
   balance: LeaveBalance | null;
 }
 
+/**
+ * Rank balances for the dashboard strip.
+ * ≥40 → show as a compact card; lower → tuck behind “+N more”.
+ */
+function balancePriority(row: BalanceRow): number {
+  const b = row.balance;
+  if (!b) {
+    return 5; // enabled but not allocated — quiet
+  }
+  const remaining = Number(b.remaining) || 0;
+  const used = Number(b.used) || 0;
+  const total = Number(b.total_available) || 0;
+  if (b.is_negative || remaining < 0) {
+    return 200;
+  }
+  if (total <= 0 && used <= 0) {
+    return 10;
+  }
+  if (remaining <= 0) {
+    return used > 0 ? 25 : 15; // depleted — list only
+  }
+  // Prefer types you still have days of; slight boost if already in use.
+  return 100 - Math.min(remaining, 40) + (used > 0 ? 8 : 0);
+}
+
 @Component({
   selector: 'app-dashboard-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,6 +92,8 @@ interface BalanceRow {
     RouterLink,
     PageHeader,
     BalanceCard,
+    AnomalyHintsPanel,
+    YearNarrativePanel,
     UiCard,
     UiBadge,
     UiButton,
@@ -171,6 +208,17 @@ interface BalanceRow {
       </section>
     }
 
+    @if (anomalies().length > 0 || yearStory()) {
+      <div class="mb-4 grid gap-3">
+        @if (anomalies().length > 0) {
+          <app-anomaly-hints [hints]="anomalies()" />
+        }
+        @if (yearStory(); as story) {
+          <app-year-narrative [story]="story" [showAnalyticsLink]="true" />
+        }
+      </div>
+    }
+
     @if (warnings().length > 0) {
       <div class="mb-4 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">
         <svg lucideTriangleAlert size="16" class="mt-0.5 shrink-0"></svg>
@@ -178,13 +226,78 @@ interface BalanceRow {
       </div>
     }
 
-    <section aria-label="Balances" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
+    <section aria-label="Balances" class="motion-rise">
       @if (loading()) {
-        @for (n of [1, 2, 3, 4, 5]; track n) { <ui-skeleton class="h-32 sm:h-36" /> }
-      } @else {
-        @for (card of cards(); track card.meta.id) {
-          <app-balance-card [meta]="card.meta" [balance]="card.balance" />
-        }
+        <div class="grid gap-3">
+          <ui-skeleton class="h-36" />
+          <div class="grid grid-cols-3 gap-2">
+            @for (n of [1, 2, 3]; track n) {
+              <ui-skeleton class="h-24" />
+            }
+          </div>
+        </div>
+      } @else if (focusCard(); as focus) {
+        <div class="grid gap-3">
+          <app-balance-card [meta]="focus.meta" [balance]="focus.balance" />
+          @if (primaryOtherCards().length > 0) {
+            <div
+              class="grid grid-cols-3 gap-2"
+              role="list"
+              aria-label="Top balances"
+            >
+              @for (card of primaryOtherCards(); track card.meta.id) {
+                <div role="listitem" class="min-w-0">
+                  <app-balance-card [meta]="card.meta" [balance]="card.balance" [compact]="true" />
+                </div>
+              }
+            </div>
+          }
+          @if (secondaryOtherCards().length > 0) {
+            @if (!balancesExpanded()) {
+              <button
+                type="button"
+                class="inline-flex min-h-9 w-fit max-w-full items-center gap-2 rounded-full border border-border bg-card/60 px-3 text-xs font-medium text-muted transition-colors hover:border-primary/40 hover:text-foreground"
+                (click)="balancesExpanded.set(true)"
+              >
+                <span class="flex -space-x-1" aria-hidden="true">
+                  @for (card of secondaryOtherCards().slice(0, 4); track card.meta.id) {
+                    <span class="size-2 rounded-full ring-2 ring-background" [style.background]="card.meta.color"></span>
+                  }
+                </span>
+                +{{ secondaryOtherCards().length }} more
+              </button>
+            } @else {
+              <div class="rounded-xl border border-border/70 bg-card/40 p-2">
+                <ul class="grid grid-cols-2 gap-1" role="list" aria-label="More balances">
+                  @for (card of secondaryOtherCards(); track card.meta.id) {
+                    <li class="min-w-0">
+                      <a
+                        [routerLink]="card.balance ? '/records' : '/settings/allocations'"
+                        [queryParams]="card.balance ? { category: card.meta.id } : {}"
+                        class="flex min-h-10 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-card-hover"
+                      >
+                        <span class="flex min-w-0 items-center gap-2">
+                          <span class="size-2 shrink-0 rounded-full" [style.background]="card.meta.color"></span>
+                          <span class="truncate text-muted">{{ card.meta.short }}</span>
+                        </span>
+                        <span class="shrink-0 font-display font-semibold tabular-nums" [style.color]="card.balance ? card.meta.color : null">
+                          {{ card.balance ? card.balance.remaining : '—' }}
+                        </span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+                <button
+                  type="button"
+                  class="mt-1 px-2.5 text-xs font-medium text-primary hover:underline"
+                  (click)="balancesExpanded.set(false)"
+                >
+                  Show less
+                </button>
+              </div>
+            }
+          }
+        </div>
       }
     </section>
 
@@ -195,11 +308,11 @@ interface BalanceRow {
         } @else {
           <div class="grid grid-cols-2 gap-2.5 text-center sm:gap-3">
             <div class="rounded-xl bg-wfh/10 p-3">
-              <p class="text-2xl font-semibold text-wfh tabular-nums">{{ monthSummary().wfhDays }}</p>
+              <p class="font-display text-2xl font-semibold text-wfh tabular-nums">{{ monthSummary().wfhDays }}</p>
               <p class="text-xs text-muted">WFH days</p>
             </div>
             <div class="rounded-xl bg-casual/10 p-3">
-              <p class="text-2xl font-semibold text-casual tabular-nums">{{ monthSummary().leaveDays }}</p>
+              <p class="font-display text-2xl font-semibold text-casual tabular-nums">{{ monthSummary().leaveDays }}</p>
               <p class="text-xs text-muted">Leave days</p>
             </div>
           </div>
@@ -216,7 +329,7 @@ interface BalanceRow {
         }
       </ui-card>
 
-      <ui-card title="Upcoming" description="Next scheduled days">
+      <ui-card variant="quiet" title="Upcoming" description="Next scheduled days">
         @if (loading()) {
           <ui-skeleton class="h-28" />
         } @else if (upcoming().length === 0) {
@@ -238,7 +351,7 @@ interface BalanceRow {
         }
       </ui-card>
 
-      <ui-card title="Recent" description="Latest entries">
+      <ui-card variant="quiet" title="Recent" description="Latest entries">
         @if (loading()) {
           <ui-skeleton class="h-28" />
         } @else if (recent().length === 0) {
@@ -295,13 +408,12 @@ interface BalanceRow {
       [defaultCategory]="defaultCategory()"
       [defaultDate]="defaultDate()"
       (closed)="dialogOpen.set(false)"
-      (saved)="load()"
     />
   `,
 })
 export class DashboardPage {
   private readonly balanceService = inject(BalanceService);
-  private readonly recordsService = inject(LeaveRecordsService);
+  private readonly store = inject(LeaveRecordsStore);
   private readonly compOffService = inject(CompOffService);
   private readonly toast = inject(ToastService);
   private readonly prefs = inject(CategoryPreferencesService);
@@ -317,7 +429,7 @@ export class DashboardPage {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   private readonly balances = signal<LeaveBalance[]>([]);
-  protected readonly records = signal<LeaveRecord[]>([]);
+  protected readonly records = this.store.records;
   private readonly compOffTransactions = signal<CompOffTransaction[]>([]);
   private readonly miniMonth = signal(startOfMonth(new Date()));
 
@@ -325,6 +437,11 @@ export class DashboardPage {
   protected readonly editing = signal<LeaveRecord | null>(null);
   protected readonly defaultCategory = signal<LeaveCategory | null>(null);
   protected readonly defaultDate = signal<string | null>(null);
+  /** Expand quiet / empty balances tucked behind “+N more”. */
+  protected readonly balancesExpanded = signal(false);
+
+  /** Max compact cards beside the hero before collapsing the rest. */
+  private readonly primaryOtherLimit = 3;
 
   protected readonly cards = computed<BalanceRow[]>(() => {
     const all = this.balances();
@@ -337,6 +454,54 @@ export class DashboardPage {
         null;
       return { meta, balance: current };
     });
+  });
+
+  /**
+   * Hero: Casual when allocated; else lowest remaining among allocated leave
+   * (not WFH). Falls back to first enabled type.
+   */
+  protected readonly focusCard = computed<BalanceRow | null>(() => {
+    const cards = this.cards();
+    if (cards.length === 0) {
+      return null;
+    }
+    const casual = cards.find((c) => c.meta.id === 'Casual Leave' && c.balance);
+    if (casual) {
+      return casual;
+    }
+    const leaveOnly = cards.filter((c) => c.meta.id !== 'Work From Home' && c.balance);
+    if (leaveOnly.length > 0) {
+      return [...leaveOnly].sort(
+        (a, b) => Number(a.balance!.remaining) - Number(b.balance!.remaining),
+      )[0];
+    }
+    const anyAllocated = cards.find((c) => c.balance);
+    return anyAllocated ?? cards[0];
+  });
+
+  /** Other types ranked for the strip: useful first, empty last. */
+  private readonly rankedOthers = computed(() => {
+    const focus = this.focusCard();
+    if (!focus) {
+      return [];
+    }
+    return this.cards()
+      .filter((c) => c.meta.id !== focus.meta.id)
+      .map((c) => ({ ...c, score: balancePriority(c) }))
+      .sort((a, b) => b.score - a.score || a.meta.label.localeCompare(b.meta.label));
+  });
+
+  /** Up to 3 high-priority compact cards (must have an allocation). */
+  protected readonly primaryOtherCards = computed(() =>
+    this.rankedOthers()
+      .filter((c) => c.score >= 40)
+      .slice(0, this.primaryOtherLimit),
+  );
+
+  /** Remaining types (depleted, unused, or no allocation) behind “+N more”. */
+  protected readonly secondaryOtherCards = computed(() => {
+    const shown = new Set(this.primaryOtherCards().map((c) => c.meta.id));
+    return this.rankedOthers().filter((c) => !shown.has(c.meta.id));
   });
 
   protected readonly subtitle = computed(() => {
@@ -352,6 +517,36 @@ export class DashboardPage {
   protected readonly warnings = computed(() =>
     negativeWarnings(this.cards().flatMap((c) => (c.balance ? [c.balance] : []))),
   );
+
+  private readonly fiscalPeriod = computed(() => fiscalYearRange(fromIsoDate(this.todayStr)));
+
+  protected readonly anomalies = computed(() =>
+    anomalyHints(this.records(), this.todayStr, this.fiscalPeriod()),
+  );
+
+  /** Year-end story only in the last 90 days, so the dashboard stays quiet early in the year. */
+  protected readonly yearStory = computed(() => {
+    const period = this.fiscalPeriod();
+    const story = yearNarrative({
+      periodStart: period.start,
+      periodEnd: period.end,
+      asOf: this.todayStr,
+      balances: this.cards()
+        .filter((c) => c.balance)
+        .map((c) => ({
+          category: c.meta.id,
+          label: c.meta.label,
+          remaining: Number(c.balance?.remaining ?? 0),
+          used: Number(c.balance?.used ?? 0),
+          total: Number(c.balance?.total_available ?? 0),
+        })),
+      compOffExpiring: this.compOffExpiring().map((lot) => ({
+        days: lot.days,
+        expiry: lot.expiry_date,
+      })),
+    });
+    return story.closing ? story : null;
+  });
 
   protected readonly compOffExpiring = computed(() =>
     expiringCompOffLots(this.compOffTransactions(), this.todayStr, this.alertDays),
@@ -444,18 +639,19 @@ export class DashboardPage {
   constructor() {
     void this.prefs.ensureLoaded();
     void this.load();
+    effect(() => {
+      const n = this.store.changes();
+      if (n === 0) {
+        return;
+      }
+      untracked(() => void this.refreshSideData());
+    });
   }
 
   protected async load(): Promise<void> {
     try {
-      const [balances, records, compOff] = await Promise.all([
-        this.balanceService.fetchBalances(),
-        this.recordsService.list(),
-        this.compOffService.list(),
-      ]);
-      this.balances.set(balances);
-      this.records.set(records);
-      this.compOffTransactions.set(compOff);
+      await this.store.ensureLoaded();
+      await this.refreshSideData();
       this.error.set(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not load dashboard data.';
@@ -464,6 +660,16 @@ export class DashboardPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Balances + Comp Off without flipping the page skeleton. */
+  private async refreshSideData(): Promise<void> {
+    const [balances, compOff] = await Promise.all([
+      this.balanceService.fetchBalances(),
+      this.compOffService.list(),
+    ]);
+    this.balances.set(balances);
+    this.compOffTransactions.set(compOff);
   }
 
   protected short(category: LeaveCategory): string {
