@@ -219,19 +219,13 @@
     z-index: 80;
   }
 
-  /* Soft brand wash behind main content (dark/light aware). */
+  /*
+   * Soft brand wash — backgrounds only (no isolation / z-index).
+   * isolation:isolate was trapping ui-dialog (fixed z-50) under the mobile
+   * bottom nav (z-40), which hid the Add/Cancel footer.
+   */
   .surface-ambient {
-    position: relative;
-    isolation: isolate;
-  }
-
-  .surface-ambient::before {
-    content: '';
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background:
+    background-image:
       radial-gradient(
         ellipse 80% 50% at 50% -10%,
         color-mix(in oklab, var(--brand-lavender) 18%, transparent),
@@ -242,23 +236,11 @@
         color-mix(in oklab, var(--brand-purple) 22%, transparent),
         transparent 65%
       );
-    opacity: 1;
+    background-repeat: no-repeat;
   }
 
-  .surface-ambient::after {
-    content: '';
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
-    mix-blend-mode: overlay;
-  }
-
-  :root.light .surface-ambient::before {
-    background:
+  :root.light .surface-ambient {
+    background-image:
       radial-gradient(
         ellipse 80% 45% at 50% -8%,
         color-mix(in oklab, var(--brand-lavender) 55%, transparent),
@@ -269,10 +251,6 @@
         color-mix(in oklab, var(--brand-purple) 8%, transparent),
         transparent 60%
       );
-  }
-
-  :root.light .surface-ambient::after {
-    opacity: 0.02;
   }
 
   /* Clearance for fixed mobile nav — keep tight to avoid extra scroll dead space. */

@@ -49,9 +49,9 @@ type WhenMode = 'today' | 'tomorrow' | 'pick' | 'range';
       "
       (closed)="closed.emit()"
     >
-      <div class="grid gap-4">
+      <div class="grid gap-3 sm:gap-4">
         <div>
-          <p class="mb-2 text-xs font-medium text-muted">Type</p>
+          <p class="mb-1.5 text-xs font-medium text-muted sm:mb-2">Type</p>
           <div class="flex flex-wrap gap-2">
             @for (c of visibleCategories(); track c.id) {
               <button
@@ -82,7 +82,7 @@ type WhenMode = 'today' | 'tomorrow' | 'pick' | 'range';
 
         @if (!record()) {
           <div>
-            <p class="mb-2 text-xs font-medium text-muted">When</p>
+            <p class="mb-1.5 text-xs font-medium text-muted sm:mb-2">When</p>
             <div class="flex flex-wrap gap-2">
               @for (opt of whenOptions; track opt.id) {
                 <button
@@ -132,7 +132,7 @@ type WhenMode = 'today' | 'tomorrow' | 'pick' | 'range';
         }
 
         <div>
-          <p class="mb-2 text-xs font-medium text-muted">Duration</p>
+          <p class="mb-1.5 text-xs font-medium text-muted sm:mb-2">Duration</p>
           <div class="grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1">
             @for (d of durations; track d) {
               <button

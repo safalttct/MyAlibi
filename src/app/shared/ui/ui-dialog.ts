@@ -3,7 +3,7 @@ import { LucideX } from '@lucide/angular';
 
 /**
  * Accessible modal. Near full-screen sheet on mobile, centered card from `sm`.
- * Backdrop, Escape to close, scrollable body, footer slot, safe-area padding.
+ * Sticky footer: body scrolls; Cancel/Add stay visible on short viewports.
  */
 @Component({
   selector: 'ui-dialog',
@@ -24,10 +24,12 @@ import { LucideX } from '@lucide/angular';
           role="dialog"
           aria-modal="true"
           [attr.aria-label]="title()"
-          class="motion-dialog-in relative flex max-h-[96dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-md sm:max-h-[90dvh] sm:rounded-2xl"
+          class="motion-dialog-in relative flex min-h-0 w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-md max-h-[min(96dvh,calc(100dvh-0.5rem))] sm:max-h-[90dvh] sm:rounded-2xl"
           [class]="widthClass()"
         >
-          <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5 sm:py-4">
+          <header
+            class="flex shrink-0 items-start justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5 sm:py-4"
+          >
             <div class="min-w-0">
               <h2 class="text-base font-semibold tracking-tight text-foreground">{{ title() }}</h2>
               @if (description()) {
@@ -43,9 +45,11 @@ import { LucideX } from '@lucide/angular';
               <svg lucideX size="18"></svg>
             </button>
           </header>
-          <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5"><ng-content /></div>
+          <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 sm:py-4">
+            <ng-content />
+          </div>
           <footer
-            class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3 pb-[max(0.75rem,var(--safe-bottom))] sm:px-5 empty:hidden"
+            class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-card px-4 py-3 pb-[max(0.75rem,var(--safe-bottom))] sm:px-5 empty:hidden"
           >
             <ng-content select="[dialogFooter]" />
           </footer>
