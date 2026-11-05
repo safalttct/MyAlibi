@@ -30,17 +30,22 @@ export class UiCard {
   protected readonly classes = computed(() => {
     const quiet = this.variant() === 'quiet';
     return (
-      'block rounded-xl text-foreground transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out ' +
+      'relative block w-full min-w-0 overflow-hidden rounded-xl text-foreground transition-[background-color,box-shadow,border-color] duration-200 ease-out ' +
       (quiet
         ? 'border border-border/60 bg-transparent '
-        : 'border border-border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.05)] ') +
+        : 'glass-panel border ') +
       (this.interactive()
         ? 'hover:-translate-y-0.5 hover:bg-card-hover hover:shadow-md active:translate-y-0'
         : '')
     );
   });
 
-  protected readonly bodyClass = computed(() =>
-    this.padded() ? (this.title() ? 'p-4 pt-3 sm:p-5 sm:pt-4' : 'p-4 sm:p-5') : '',
-  );
+  protected readonly bodyClass = computed(() => {
+    const pad = this.padded()
+      ? this.title()
+        ? 'p-4 pt-3 sm:p-5 sm:pt-4'
+        : 'p-4 sm:p-5'
+      : '';
+    return `relative w-full min-w-0 ${pad}`.trim();
+  });
 }

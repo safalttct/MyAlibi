@@ -57,6 +57,13 @@
   --elevation-md: 0 8px 24px rgb(0 0 0 / 0.35);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --nav-height: 4rem;
+
+  /* Frosted glass (dark default) */
+  --glass-bg: color-mix(in oklab, var(--surface-elevated) 58%, transparent);
+  --glass-bg-strong: color-mix(in oklab, var(--surface-elevated) 78%, transparent);
+  --glass-border: color-mix(in oklab, var(--foreground) 10%, transparent);
+  --glass-blur: 18px;
+  --glow-brand: color-mix(in oklab, var(--brand-lavender) 28%, transparent);
 }
 
 :root.light {
@@ -100,6 +107,13 @@
 
   --elevation-sm: 0 1px 2px rgb(24 24 27 / 0.06);
   --elevation-md: 0 8px 24px rgb(24 24 27 / 0.1);
+
+  /* Light: opaque panels — glass utilities degrade to solid */
+  --glass-bg: var(--surface-elevated);
+  --glass-bg-strong: var(--surface-elevated);
+  --glass-border: var(--border);
+  --glass-blur: 0px;
+  --glow-brand: color-mix(in oklab, var(--brand-lavender) 40%, transparent);
 }
 
 @theme inline {
@@ -224,32 +238,40 @@
    * isolation:isolate was trapping ui-dialog (fixed z-50) under the mobile
    * bottom nav (z-40), which hid the Add/Cancel footer.
    */
+  /* Full-bleed on <main> — not page-shell — so max-width never clips the wash. */
   .surface-ambient {
+    background-color: var(--background);
     background-image:
       radial-gradient(
-        ellipse 80% 50% at 50% -10%,
-        color-mix(in oklab, var(--brand-lavender) 18%, transparent),
+        ellipse 90% 55% at 50% -12%,
+        color-mix(in oklab, var(--brand-lavender) 26%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 100% 12%,
+        color-mix(in oklab, var(--brand-purple) 28%, transparent),
         transparent 70%
       ),
       radial-gradient(
-        ellipse 60% 40% at 100% 20%,
-        color-mix(in oklab, var(--brand-purple) 22%, transparent),
-        transparent 65%
+        ellipse 45% 35% at 0% 75%,
+        color-mix(in oklab, var(--brand-lavender) 12%, transparent),
+        transparent 70%
       );
     background-repeat: no-repeat;
+    background-size: 100% 100%;
   }
 
   :root.light .surface-ambient {
     background-image:
       radial-gradient(
-        ellipse 80% 45% at 50% -8%,
+        ellipse 90% 50% at 50% -8%,
         color-mix(in oklab, var(--brand-lavender) 55%, transparent),
-        transparent 70%
+        transparent 72%
       ),
       radial-gradient(
-        ellipse 50% 35% at 100% 10%,
-        color-mix(in oklab, var(--brand-purple) 8%, transparent),
-        transparent 60%
+        ellipse 55% 40% at 100% 8%,
+        color-mix(in oklab, var(--brand-purple) 10%, transparent),
+        transparent 65%
       );
   }
 
@@ -270,13 +292,60 @@
     @apply inline-flex min-h-11 min-w-11 items-center justify-center;
   }
 
+  /*
+   * Frosted panel — blur on ::before so host layout stays stable.
+   * Safe to use position:relative here: fixed chrome (sidebar) does not use
+   * this class (a prior combo overrode `fixed` and shoved main content down).
+   */
+  .glass-panel {
+    position: relative;
+    isolation: isolate;
+    border-color: var(--glass-border);
+    background-color: transparent;
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent),
+      var(--elevation-sm);
+  }
+
+  .glass-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+    pointer-events: none;
+  }
+
+  .glass-panel-strong::before {
+    background-color: var(--glass-bg-strong);
+  }
+
+  /* Soft brand glow for active nav / accent bars (lavender, not neon). */
+  .glow-brand-soft {
+    box-shadow: 0 0 20px -4px var(--glow-brand);
+  }
+
+  /* Desktop sidebar active item */
+  .nav-active {
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    box-shadow: 0 0 18px -6px var(--glow-brand);
+  }
+
+  :root.light .nav-active {
+    box-shadow: none;
+  }
+
   /* Frosted sticky chrome (mobile header / bottom nav / sticky strips). */
   .glass-chrome {
-    background-color: color-mix(in oklab, var(--surface) 72%, transparent);
-    border-color: color-mix(in oklab, var(--border) 80%, transparent);
-    backdrop-filter: blur(20px) saturate(1.5);
-    -webkit-backdrop-filter: blur(20px) saturate(1.5);
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--border) 55%, transparent);
+    background-color: var(--glass-bg);
+    border-color: var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent);
     transition:
       background-color 0.2s ease,
       box-shadow 0.2s ease,
@@ -284,14 +353,17 @@
   }
 
   .glass-chrome-scrolled {
-    background-color: color-mix(in oklab, var(--surface) 88%, transparent);
+    background-color: var(--glass-bg-strong);
     box-shadow:
-      0 1px 0 color-mix(in oklab, var(--border) 70%, transparent),
+      0 1px 0 color-mix(in oklab, var(--foreground) 8%, transparent),
       0 8px 24px color-mix(in oklab, var(--background) 45%, transparent);
   }
 
   :root.light .glass-chrome {
     background-color: color-mix(in oklab, var(--surface) 78%, transparent);
+    border-color: var(--border);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
   }
 
   :root.light .glass-chrome-scrolled {
@@ -299,6 +371,43 @@
     box-shadow:
       0 1px 0 color-mix(in oklab, var(--border) 80%, transparent),
       0 8px 20px rgb(24 24 27 / 0.08);
+  }
+
+  :root.light .glass-panel {
+    border-color: var(--border);
+    box-shadow: var(--elevation-sm);
+  }
+
+  :root.light .glass-panel::before,
+  :root.light .glass-panel-strong::before {
+    background-color: var(--surface-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-panel::before,
+    .glass-panel-strong::before {
+      background-color: var(--surface-elevated);
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    .glass-chrome,
+    .glass-chrome-scrolled {
+      background-color: var(--surface-elevated);
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    .glass-chrome {
+      background-color: var(--surface);
+    }
+
+    .glow-brand-soft,
+    .nav-active {
+      box-shadow: none;
+    }
   }
 
   /* Shared micro-motion (easing matches charts). */

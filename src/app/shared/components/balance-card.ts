@@ -7,21 +7,22 @@ import { UiProgress } from '../ui/ui-progress';
   selector: 'app-balance-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, UiProgress],
-  host: { class: 'block h-full' },
+  host: { class: 'block h-full min-w-0' },
   template: `
     <a
       [routerLink]="link()"
       [queryParams]="queryParams()"
       [class]="
-        'group relative block h-full overflow-hidden rounded-xl border border-border bg-card shadow-sm ' +
-        'transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-card-hover hover:shadow-md active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ' +
-        (compact() ? 'min-w-0 p-2.5 sm:p-3' : 'p-4 sm:p-5')
+        'group relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl glass-panel border ' +
+        'transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ' +
+        (compact() ? 'p-2.5 sm:p-3' : 'p-4 sm:p-5')
       "
       [attr.aria-label]="ariaLabel()"
     >
       <div
-        class="pointer-events-none absolute inset-x-0 top-0 h-0.5"
+        class="pointer-events-none absolute inset-x-0 top-0 h-0.5 opacity-90"
         [style.background]="meta().color"
+        [style.box-shadow]="'0 0 10px -2px ' + meta().color"
         aria-hidden="true"
       ></div>
 
@@ -41,7 +42,7 @@ import { UiProgress } from '../ui/ui-progress';
           [class]="
             compact()
               ? 'mt-1.5 text-lg sm:text-xl'
-              : 'mt-3 text-[1.75rem] sm:text-3xl'
+              : 'mt-3 text-[1.75rem] sm:text-2xl lg:text-[1.75rem]'
           "
           [class.text-danger]="b.is_negative"
           [style.color]="b.is_negative ? null : meta().color"
@@ -58,7 +59,7 @@ import { UiProgress } from '../ui/ui-progress';
             [color]="meta().color"
             [negative]="b.is_negative"
           />
-          <p class="mt-2 text-xs text-muted tabular-nums">
+          <p class="mt-2 truncate text-xs text-muted tabular-nums">
             {{ b.used }} used of {{ b.total_available }} · {{ b.usage_percent }}%
           </p>
         } @else {
@@ -67,7 +68,7 @@ import { UiProgress } from '../ui/ui-progress';
       } @else {
         <p
           class="font-display font-semibold text-muted"
-          [class]="compact() ? 'mt-2 text-xl' : 'mt-3 text-[1.75rem] sm:text-3xl'"
+          [class]="compact() ? 'mt-2 text-xl' : 'mt-3 text-[1.75rem] sm:text-2xl'"
         >
           –
         </p>

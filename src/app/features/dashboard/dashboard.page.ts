@@ -130,7 +130,7 @@ function balancePriority(row: BalanceRow): number {
 
     @if (!loading() && showGettingStarted()) {
       <section
-        class="mb-4 rounded-2xl border border-primary/25 bg-primary-soft p-4 sm:mb-5 sm:p-5"
+        class="glass-panel mb-4 rounded-2xl border border-primary/25 p-4 sm:mb-5 sm:p-5"
         aria-label="Getting started"
       >
         <div class="flex items-start gap-3">
@@ -229,34 +229,52 @@ function balancePriority(row: BalanceRow): number {
     <section aria-label="Balances" class="motion-rise">
       @if (loading()) {
         <div class="grid gap-3">
-          <ui-skeleton class="h-36" />
-          <div class="grid grid-cols-3 gap-2">
+          <ui-skeleton class="h-36 md:hidden" />
+          <div class="grid grid-cols-3 gap-2 md:hidden">
             @for (n of [1, 2, 3]; track n) {
               <ui-skeleton class="h-24" />
+            }
+          </div>
+          <div class="hidden gap-3 md:grid md:grid-cols-2 lg:grid-cols-4">
+            @for (n of [1, 2, 3, 4]; track n) {
+              <ui-skeleton class="h-36" />
             }
           </div>
         </div>
       } @else if (focusCard(); as focus) {
         <div class="grid gap-3">
-          <app-balance-card [meta]="focus.meta" [balance]="focus.balance" />
-          @if (primaryOtherCards().length > 0) {
-            <div
-              class="grid grid-cols-3 gap-2"
-              role="list"
-              aria-label="Top balances"
-            >
-              @for (card of primaryOtherCards(); track card.meta.id) {
-                <div role="listitem" class="min-w-0">
-                  <app-balance-card [meta]="card.meta" [balance]="card.balance" [compact]="true" />
-                </div>
-              }
-            </div>
-          }
+          <!-- Mobile: hero focus + compact strip -->
+          <div class="grid gap-3 md:hidden">
+            <app-balance-card [meta]="focus.meta" [balance]="focus.balance" />
+            @if (primaryOtherCards().length > 0) {
+              <div class="grid grid-cols-3 gap-2" role="list" aria-label="Top balances">
+                @for (card of primaryOtherCards(); track card.meta.id) {
+                  <div role="listitem" class="min-w-0">
+                    <app-balance-card [meta]="card.meta" [balance]="card.balance" [compact]="true" />
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Desktop: equal cards (Casual Leave no longer full-bleed hero) -->
+          <div
+            class="hidden items-stretch gap-3 md:grid md:grid-cols-2 lg:grid-cols-4"
+            role="list"
+            aria-label="Balances"
+          >
+            @for (card of primaryBalanceCards(); track card.meta.id) {
+              <div role="listitem" class="min-h-0 min-w-0">
+                <app-balance-card [meta]="card.meta" [balance]="card.balance" />
+              </div>
+            }
+          </div>
+
           @if (secondaryOtherCards().length > 0) {
             @if (!balancesExpanded()) {
               <button
                 type="button"
-                class="inline-flex min-h-9 w-fit max-w-full items-center gap-2 rounded-full border border-border bg-card/60 px-3 text-xs font-medium text-muted transition-colors hover:border-primary/40 hover:text-foreground"
+                class="glass-panel inline-flex min-h-9 w-fit max-w-full items-center gap-2 rounded-full border px-3 text-xs font-medium text-muted transition-colors hover:border-primary/40 hover:text-foreground"
                 (click)="balancesExpanded.set(true)"
               >
                 <span class="flex -space-x-1" aria-hidden="true">
@@ -267,8 +285,8 @@ function balancePriority(row: BalanceRow): number {
                 +{{ secondaryOtherCards().length }} more
               </button>
             } @else {
-              <div class="rounded-xl border border-border/70 bg-card/40 p-2">
-                <ul class="grid grid-cols-2 gap-1" role="list" aria-label="More balances">
+              <div class="glass-panel rounded-xl border p-2">
+                <ul class="grid grid-cols-2 gap-1 md:grid-cols-3 lg:grid-cols-4" role="list" aria-label="More balances">
                   @for (card of secondaryOtherCards(); track card.meta.id) {
                     <li class="min-w-0">
                       <a
@@ -307,11 +325,11 @@ function balancePriority(row: BalanceRow): number {
           <ui-skeleton class="h-28" />
         } @else {
           <div class="grid grid-cols-2 gap-2.5 text-center sm:gap-3">
-            <div class="rounded-xl bg-wfh/10 p-3">
+            <div class="rounded-xl border border-wfh/20 bg-wfh/10 p-3">
               <p class="font-display text-2xl font-semibold text-wfh tabular-nums">{{ monthSummary().wfhDays }}</p>
               <p class="text-xs text-muted">WFH days</p>
             </div>
-            <div class="rounded-xl bg-casual/10 p-3">
+            <div class="rounded-xl border border-casual/20 bg-casual/10 p-3">
               <p class="font-display text-2xl font-semibold text-casual tabular-nums">{{ monthSummary().leaveDays }}</p>
               <p class="text-xs text-muted">Leave days</p>
             </div>
@@ -380,25 +398,27 @@ function balancePriority(row: BalanceRow): number {
         <button uiButton variant="ghost" size="icon" aria-label="Previous month" (click)="shiftMonth(-1)"><svg lucideChevronLeft size="16"></svg></button>
         <button uiButton variant="ghost" size="icon" aria-label="Next month" (click)="shiftMonth(1)"><svg lucideChevronRight size="16"></svg></button>
       </div>
-      <div class="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-muted-fg sm:gap-1">
-        @for (d of weekdays; track d) { <span>{{ d }}</span> }
-      </div>
-      <div class="mt-1 grid grid-cols-7 gap-0.5 sm:gap-1">
-        @for (day of miniDays(); track day.iso) {
-          <button type="button"
-            class="flex h-10 flex-col items-center justify-center gap-0.5 rounded-lg text-xs tabular-nums transition-colors hover:bg-card-hover sm:h-11 sm:gap-1"
-            [class]="day.inMonth ? 'text-foreground' : 'text-muted-fg/50'"
-            [class.ring-1]="day.iso === todayStr"
-            [class.ring-accent]="day.iso === todayStr"
-            [class.font-semibold]="day.iso === todayStr"
-            [attr.aria-label]="'Add record on ' + day.iso"
-            (click)="openAddOn(day.iso)">
-            {{ day.date.getDate() }}
-            <span class="flex h-1.5 gap-0.5">
-              @for (meta of day.dots; track meta.id) { <span class="size-1.5 rounded-full" [class]="meta.dotClass"></span> }
-            </span>
-          </button>
-        }
+      <div class="w-full min-w-0">
+        <div class="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-muted-fg sm:gap-1">
+          @for (d of weekdays; track d) { <span>{{ d }}</span> }
+        </div>
+        <div class="mt-1 grid grid-cols-7 gap-0.5 sm:gap-1">
+          @for (day of miniDays(); track day.iso) {
+            <button type="button"
+              class="flex h-10 flex-col items-center justify-center gap-0.5 rounded-lg text-xs tabular-nums transition-colors hover:bg-card-hover sm:h-11 sm:gap-1"
+              [class]="day.inMonth ? 'text-foreground' : 'text-muted-fg/50'"
+              [class.ring-1]="day.iso === todayStr"
+              [class.ring-accent]="day.iso === todayStr"
+              [class.font-semibold]="day.iso === todayStr"
+              [attr.aria-label]="'Add record on ' + day.iso"
+              (click)="openAddOn(day.iso)">
+              {{ day.date.getDate() }}
+              <span class="flex h-1.5 gap-0.5">
+                @for (meta of day.dots; track meta.id) { <span class="size-1.5 rounded-full" [class]="meta.dotClass"></span> }
+              </span>
+            </button>
+          }
+        </div>
       </div>
     </ui-card>
 
@@ -498,9 +518,15 @@ export class DashboardPage {
       .slice(0, this.primaryOtherLimit),
   );
 
+  /** Focus + primary strip — equal-sized on desktop. */
+  protected readonly primaryBalanceCards = computed(() => {
+    const focus = this.focusCard();
+    return focus ? [focus, ...this.primaryOtherCards()] : this.primaryOtherCards();
+  });
+
   /** Remaining types (depleted, unused, or no allocation) behind “+N more”. */
   protected readonly secondaryOtherCards = computed(() => {
-    const shown = new Set(this.primaryOtherCards().map((c) => c.meta.id));
+    const shown = new Set(this.primaryBalanceCards().map((c) => c.meta.id));
     return this.rankedOthers().filter((c) => !shown.has(c.meta.id));
   });
 

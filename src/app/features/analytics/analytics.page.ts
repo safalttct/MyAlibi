@@ -127,30 +127,30 @@ function rangeFor(mode: PeriodMode, year: number): DateRange {
 
       <!-- Summary -->
       <section class="mb-4 grid grid-cols-2 gap-2.5 sm:mb-5 sm:grid-cols-4 sm:gap-3" aria-label="Summary">
-        <article class="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <article class="glass-panel rounded-xl border p-3.5 sm:p-4">
           <p class="text-[11px] font-medium tracking-wide text-muted uppercase">Total days</p>
-          <p class="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+          <p class="mt-1.5 font-display text-2xl font-semibold tabular-nums tracking-tight text-foreground">
             {{ totals().total }}
           </p>
           <p class="mt-1 text-[11px] text-muted">WFH + leave this period</p>
         </article>
-        <article class="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <article class="glass-panel rounded-xl border p-3.5 sm:p-4">
           <p class="text-[11px] font-medium tracking-wide text-muted uppercase">WFH</p>
-          <p class="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-wfh">
+          <p class="mt-1.5 font-display text-2xl font-semibold tabular-nums tracking-tight text-wfh">
             {{ totals().wfh }}
           </p>
           <p class="mt-1 text-[11px] text-muted tabular-nums">{{ totals().wfhShare }}% of total</p>
         </article>
-        <article class="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <article class="glass-panel rounded-xl border p-3.5 sm:p-4">
           <p class="text-[11px] font-medium tracking-wide text-muted uppercase">Leave</p>
-          <p class="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-casual">
+          <p class="mt-1.5 font-display text-2xl font-semibold tabular-nums tracking-tight text-casual">
             {{ totals().leave }}
           </p>
           <p class="mt-1 text-[11px] text-muted tabular-nums">{{ totals().leaveShare }}% of total</p>
         </article>
-        <article class="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <article class="glass-panel rounded-xl border p-3.5 sm:p-4">
           <p class="text-[11px] font-medium tracking-wide text-muted uppercase">Busiest month</p>
-          <p class="mt-1.5 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          <p class="mt-1.5 font-display text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             {{ totals().busiest }}
           </p>
           <p class="mt-1 text-[11px] text-muted tabular-nums">

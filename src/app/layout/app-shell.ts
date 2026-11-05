@@ -67,7 +67,7 @@ interface NavItem {
     <div class="min-h-dvh overflow-x-hidden bg-background text-foreground">
       <!-- Desktop sidebar -->
       <aside
-        class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-surface md:flex"
+        class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-[var(--glass-border)] bg-[var(--glass-bg-strong)] shadow-sm backdrop-blur-xl backdrop-saturate-150 md:flex"
         aria-label="Application"
       >
         <div class="flex h-[4.25rem] items-center px-5">
@@ -80,11 +80,11 @@ interface NavItem {
           @for (item of primaryNav; track item.path) {
             <a
               [routerLink]="item.path"
-              routerLinkActive="bg-primary-soft text-primary"
+              routerLinkActive="nav-active"
               [routerLinkActiveOptions]="item.path === '/settings' ? { exact: false } : { exact: true }"
-              class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+              class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-[background-color,color,box-shadow] duration-200 hover:bg-surface-hover/80 hover:text-foreground"
             >
-              <span class="text-current opacity-80 group-[.bg-primary-soft]:opacity-100">
+              <span class="text-current opacity-80 group-[.nav-active]:opacity-100">
                 @switch (item.icon) {
                   @case ('dashboard') { <svg lucideLayoutDashboard size="18" strokeWidth="1.75"></svg> }
                   @case ('records') { <svg lucideListChecks size="18" strokeWidth="1.75"></svg> }
@@ -99,8 +99,8 @@ interface NavItem {
           }
         </nav>
 
-        <div class="space-y-2 border-t border-border p-3">
-          <div class="flex items-center gap-2 rounded-lg bg-primary-soft/80 px-2.5 py-2">
+        <div class="space-y-2 border-t border-border/60 p-3">
+          <div class="flex items-center gap-2 rounded-lg border border-border/50 bg-primary-soft/60 px-2.5 py-2">
             <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
               <svg lucideUserRound size="16"></svg>
             </span>
@@ -167,9 +167,9 @@ interface NavItem {
         </div>
       </header>
 
-      <main class="md:ml-60">
+      <main class="surface-ambient md:ml-60 md:min-h-dvh">
         <div
-          class="surface-ambient page-shell safe-pb-nav flex min-h-0 flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-8"
+          class="page-shell safe-pb-nav flex min-h-0 flex-col px-4 pt-5 sm:px-6 md:min-h-dvh md:px-8 md:pt-8 md:pb-8"
         >
           <div class="min-w-0 flex-1">
             <router-outlet />

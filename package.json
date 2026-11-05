@@ -1,6 +1,6 @@
 {
   "name": "myalibi",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "scripts": {
     "ng": "ng",
     "start": "node scripts/set-env.mjs && ng serve",
