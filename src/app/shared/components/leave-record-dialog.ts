@@ -10,6 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { format } from 'date-fns';
 import {
   LeaveCategory,
@@ -19,11 +20,14 @@ import {
   categoryMeta,
   normalizeCategory,
 } from '../../core/models/leave.models';
+import { BalanceService } from '../../core/services/balance.service';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
+import { CoachTipsService } from '../../core/services/coach-tips.service';
 import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { addDaysIso, fromIsoDate, todayIso } from '../../core/utils/dates';
 import { WORKING_DAYS_RANGE_CAP, describeSkipped, workingDaysInRange } from '../../core/utils/working-days';
 import { UiButton } from '../ui/ui-button';
+import { UiCoachTip } from '../ui/ui-coach-tip';
 import { UiDateField } from '../ui/ui-date-field';
 import { UiDialog } from '../ui/ui-dialog';
 import { UiField } from '../ui/ui-field';
@@ -35,7 +39,7 @@ type WhenMode = 'today' | 'tomorrow' | 'pick' | 'range';
 @Component({
   selector: 'app-leave-record-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, UiDialog, UiButton, UiDateField, UiField, UiInput],
+  imports: [FormsModule, RouterLink, UiDialog, UiButton, UiCoachTip, UiDateField, UiField, UiInput],
   template: `
     <ui-dialog
       [open]="open()"
@@ -78,6 +82,28 @@ type WhenMode = 'today' | 'tomorrow' | 'pick' | 'range';
               </button>
             }
           </div>
+          @if (showCompOffNudge()) {
+            <ui-coach-tip
+              class="mt-2"
+              tipId="leave-comp-off-nudge"
+              title="Comp Off available"
+              [message]="
+                'You still have ' +
+                compOffRemaining() +
+                ' Comp Off day(s) — use them before they expire?'
+              "
+            >
+              <a
+                uiButton
+                size="sm"
+                variant="outline"
+                routerLink="/comp-off"
+                (click)="onCompOffNudgeAction()"
+              >
+                Open Comp Off
+              </a>
+            </ui-coach-tip>
+          }
         </div>
 
         @if (!record()) {
@@ -218,6 +244,8 @@ type WhenMode = 'today' | 'tomorrow' | 'pick' | 'range';
 export class LeaveRecordDialog {
   private readonly store = inject(LeaveRecordsStore);
   private readonly prefs = inject(CategoryPreferencesService);
+  private readonly balances = inject(BalanceService);
+  private readonly coach = inject(CoachTipsService);
 
   readonly open = input(false);
   readonly record = input<LeaveRecord | null>(null);
@@ -249,6 +277,15 @@ export class LeaveRecordDialog {
   protected readonly saving = signal(false);
   protected readonly deleting = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly compOffRemaining = signal(0);
+
+  protected readonly showCompOffNudge = computed(
+    () =>
+      !this.record() &&
+      this.category() === 'Casual Leave' &&
+      this.compOffRemaining() > 0 &&
+      this.coach.isVisible('leave-comp-off-nudge'),
+  );
 
   protected readonly categories = computed(() => {
     const enabled = [...this.prefs.enabledCategories()];
@@ -385,6 +422,12 @@ export class LeaveRecordDialog {
       if (!this.open()) {
         return;
       }
+      untracked(() => void this.refreshCompOffRemaining());
+    });
+    effect(() => {
+      if (!this.open()) {
+        return;
+      }
       const record = this.record();
       const defaultDate = this.defaultDate();
       const defaultCategory = this.defaultCategory();
@@ -420,6 +463,28 @@ export class LeaveRecordDialog {
     this.whenMode.set(mode);
     if (mode === 'range' && this.duration() === 'Half Day') {
       this.duration.set('Full Day');
+    }
+  }
+
+  protected onCompOffNudgeAction(): void {
+    this.coach.dismiss('leave-comp-off-nudge');
+    this.closed.emit();
+  }
+
+  private async refreshCompOffRemaining(): Promise<void> {
+    try {
+      const today = todayIso();
+      const rows = await this.balances.fetchBalances();
+      const current =
+        rows.find(
+          (b) =>
+            b.category === 'Compensatory Leave' &&
+            b.period_start <= today &&
+            b.period_end >= today,
+        ) ?? rows.find((b) => b.category === 'Compensatory Leave');
+      this.compOffRemaining.set(Math.max(0, Number(current?.remaining) || 0));
+    } catch {
+      this.compOffRemaining.set(0);
     }
   }
 

@@ -48,6 +48,7 @@ import { BalanceCard } from '../../shared/components/balance-card';
 import { AnomalyHintsPanel, YearNarrativePanel } from '../../shared/components/insight-panels';
 import { LeaveRecordDialog } from '../../shared/components/leave-record-dialog';
 import { PageHeader } from '../../shared/components/page-header';
+import { SwipeMonthDirective } from '../../shared/directives/swipe-month';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
@@ -100,6 +101,7 @@ function balancePriority(row: BalanceRow): number {
     UiSkeleton,
     UiEmptyState,
     LeaveRecordDialog,
+    SwipeMonthDirective,
     LucidePlus,
     LucideHouse,
     LucideTimerReset,
@@ -398,7 +400,13 @@ function balancePriority(row: BalanceRow): number {
         <button uiButton variant="ghost" size="icon" aria-label="Previous month" (click)="shiftMonth(-1)"><svg lucideChevronLeft size="16"></svg></button>
         <button uiButton variant="ghost" size="icon" aria-label="Next month" (click)="shiftMonth(1)"><svg lucideChevronRight size="16"></svg></button>
       </div>
-      <div class="w-full min-w-0">
+      <div
+        class="w-full min-w-0"
+        appSwipeMonth
+        (monthSwipe)="shiftMonth($event)"
+        role="region"
+        [attr.aria-label]="'Mini calendar for ' + miniLabel() + '. Swipe left or right to change month.'"
+      >
         <div class="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-muted-fg sm:gap-1">
           @for (d of weekdays; track d) { <span>{{ d }}</span> }
         </div>

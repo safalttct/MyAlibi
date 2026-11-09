@@ -24,10 +24,11 @@ import {
   isLeaveCategory,
 } from '../../core/models/leave.models';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
+import { FiscalYearService } from '../../core/services/fiscal-year.service';
 import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { ToastService } from '../../core/services/toast.service';
 import { serializeCsv } from '../../core/utils/csv';
-import { fromIsoDate } from '../../core/utils/dates';
+import { fromIsoDate, inRange } from '../../core/utils/dates';
 import { downloadText } from '../../core/utils/download';
 import { downloadRecordsPdf } from '../../core/utils/export-records-pdf';
 import { ExportMenu } from '../../shared/components/export-menu';
@@ -36,12 +37,14 @@ import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
+import { UiCoachTip } from '../../shared/ui/ui-coach-tip';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
 import { UiField } from '../../shared/ui/ui-field';
 import { UiDateField } from '../../shared/ui/ui-date-field';
 import { UiInput } from '../../shared/ui/ui-input';
 import { UiSelect } from '../../shared/ui/ui-select';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
+import { RouterLink } from '@angular/router';
 
 type SortKey = 'date' | 'title' | 'category' | 'days';
 
@@ -50,6 +53,7 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
+    RouterLink,
     PageHeader,
     UiCard,
     UiBadge,
@@ -60,6 +64,7 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
     UiField,
     UiSkeleton,
     UiEmptyState,
+    UiCoachTip,
     LeaveRecordDialog,
     ExportMenu,
     LucidePlus,
@@ -193,7 +198,16 @@ type SortKey = 'date' | 'title' | 'category' | 'days';
       } @else if (error()) {
         <p class="m-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
       } @else if (filtered().length === 0) {
-        <div class="p-4 sm:p-6">
+        <div class="space-y-3 p-4 sm:p-6">
+          @if (emptyCurrentYear()) {
+            <ui-coach-tip
+              tipId="records-import-empty-year"
+              title="Backfill this leave year"
+              message="No records in the current financial year yet. Import last year’s CSV from Settings → Data."
+            >
+              <a uiButton size="sm" variant="outline" routerLink="/settings/data">Open import</a>
+            </ui-coach-tip>
+          }
           <ui-empty-state
             [title]="all().length === 0 ? 'No records yet' : 'No records match your filters'"
             [description]="all().length === 0 ? 'Add a record or import your CSV files from Settings → Data.' : 'Try clearing or adjusting the filters.'"
@@ -292,6 +306,7 @@ export class LeaveRecordsPage {
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly fiscalYear = inject(FiscalYearService);
 
   private readonly prefs = inject(CategoryPreferencesService);
   protected readonly categories = this.prefs.enabledCategories;
@@ -332,6 +347,12 @@ export class LeaveRecordsPage {
     () =>
       !!(this.search() || this.category() || this.duration() || this.month() || this.from() || this.to()),
   );
+
+  /** No leave/WFH logged in the current FY — suggest CSV import. */
+  protected readonly emptyCurrentYear = computed(() => {
+    const { start, end } = this.fiscalYear.currentPeriod();
+    return !this.all().some((r) => inRange(r.date, start, end));
+  });
 
   protected readonly advancedFilterCount = computed(() => {
     let n = 0;

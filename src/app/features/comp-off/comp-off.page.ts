@@ -20,6 +20,7 @@ import { PageHeader } from '../../shared/components/page-header';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
+import { UiCoachTip } from '../../shared/ui/ui-coach-tip';
 import { UiConfirmDialog } from '../../shared/ui/ui-confirm-dialog';
 import { UiDialog } from '../../shared/ui/ui-dialog';
 import { UiEmptyState } from '../../shared/ui/ui-empty-state';
@@ -49,6 +50,7 @@ const TYPE_LABEL: Record<CompOffType, string> = {
     UiDialog,
     UiConfirmDialog,
     UiEmptyState,
+    UiCoachTip,
     UiField,
     UiInput,
     UiSkeleton,
@@ -72,6 +74,15 @@ const TYPE_LABEL: Record<CompOffType, string> = {
     @if (error()) {
       <p class="mb-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error() }}</p>
     }
+
+    <div class="mb-4">
+      <ui-coach-tip
+        tipId="comp-off-fy-scope"
+        [when]="showFyScopeTip()"
+        title="This leave year only"
+        message="Available is for the current financial year. Older ledger entries stay in history but don’t change this year’s balance."
+      />
+    </div>
 
     <p class="mb-4 text-sm text-muted">
       Worked extra hours → request Comp Off from your project manager → once approved, add an
@@ -315,6 +326,15 @@ export class CompOffPage {
       used: bal.used,
       expiring,
     };
+  });
+
+  /** Available 0 + prior-FY txs → explain FY scoping once. */
+  protected readonly showFyScopeTip = computed(() => {
+    if (this.loading() || this.summary().remaining !== 0) {
+      return false;
+    }
+    const { start, end } = this.period();
+    return this.transactions().some((t) => !inRange(t.transaction_date, start, end));
   });
 
   constructor() {

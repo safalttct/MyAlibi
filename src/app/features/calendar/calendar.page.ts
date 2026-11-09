@@ -3,15 +3,18 @@ import { LucideChevronLeft, LucideChevronRight, LucidePlus } from '@lucide/angul
 import { addMonths, format, startOfMonth } from 'date-fns';
 import { holidaysOn, PublicHoliday } from '../../core/data/public-holidays';
 import { LeaveCategory, LeaveRecord, categoryMeta } from '../../core/models/leave.models';
+import { CoachTipsService } from '../../core/services/coach-tips.service';
 import { CategoryPreferencesService } from '../../core/services/category-preferences.service';
 import { LeaveRecordsStore } from '../../core/services/leave-records.store';
 import { WEEKDAYS_MON_FIRST, buildMonthGrid } from '../../core/utils/calendar-grid';
 import { fromIsoDate, todayIso } from '../../core/utils/dates';
 import { LeaveRecordDialog } from '../../shared/components/leave-record-dialog';
 import { PageHeader } from '../../shared/components/page-header';
+import { SwipeMonthDirective } from '../../shared/directives/swipe-month';
 import { UiBadge } from '../../shared/ui/ui-badge';
 import { UiButton } from '../../shared/ui/ui-button';
 import { UiCard } from '../../shared/ui/ui-card';
+import { UiCoachTip } from '../../shared/ui/ui-coach-tip';
 import { UiSkeleton } from '../../shared/ui/ui-skeleton';
 
 type CalendarFilter = '' | LeaveCategory | 'holiday';
@@ -26,6 +29,8 @@ type CalendarFilter = '' | LeaveCategory | 'holiday';
     UiButton,
     UiSkeleton,
     LeaveRecordDialog,
+    SwipeMonthDirective,
+    UiCoachTip,
     LucideChevronLeft,
     LucideChevronRight,
     LucidePlus,
@@ -42,6 +47,10 @@ type CalendarFilter = '' | LeaveCategory | 'holiday';
         </button>
       </div>
     </app-page-header>
+
+    <div class="mb-3 sm:hidden">
+      <ui-coach-tip tipId="calendar-swipe" message="Swipe the calendar left or right to change month." />
+    </div>
 
     <div class="glass-chrome sticky top-14 z-20 -mx-4 mb-4 flex gap-2 overflow-x-auto border-b px-4 py-2 sm:static sm:top-auto sm:mx-0 sm:flex-wrap sm:overflow-visible sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:[backdrop-filter:none] sm:shadow-none md:top-0" role="group" aria-label="Filter by category">
       <button type="button" class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
@@ -65,71 +74,86 @@ type CalendarFilter = '' | LeaveCategory | 'holiday';
     </div>
 
     <ui-card [padded]="false">
-      <div class="grid grid-cols-7 border-b border-border bg-elevated/40 text-center text-[11px] font-medium text-muted sm:text-xs">
-        @for (d of weekdays; track d) { <div class="py-2">{{ d }}</div> }
-      </div>
+      <div
+        appSwipeMonth
+        (monthSwipe)="onMonthSwipe($event)"
+        role="region"
+        [attr.aria-label]="'Month grid for ' + label() + '. Swipe left or right to change month.'"
+      >
+        <div class="grid grid-cols-7 border-b border-border bg-elevated/40 text-center text-[11px] font-medium text-muted sm:text-xs">
+          @for (d of weekdays; track d) { <div class="py-2">{{ d }}</div> }
+        </div>
 
-      @if (loading()) {
-        <ui-skeleton class="m-3 h-80 sm:m-4 sm:h-96" />
-      } @else {
-        <div class="grid grid-cols-7">
-          @for (day of days(); track day.iso) {
-            <div class="group relative min-h-14 border-r border-b border-border p-1 last:border-r-0 sm:min-h-28 sm:p-1.5"
-              [class]="dayCellClass(day)">
-              <button type="button" class="absolute inset-0 z-10 sm:hidden"
-                [attr.aria-label]="dayAriaLabel(day)"
-                [attr.aria-pressed]="day.iso === selected()"
-                (click)="selected.set(day.iso)"></button>
-              <div class="flex items-center justify-center sm:justify-between">
-                <span class="flex size-6 items-center justify-center rounded-full text-xs"
-                  [class]="dayNumberClass(day)">
-                  {{ day.date.getDate() }}
-                </span>
-                <button type="button" class="rounded p-0.5 text-muted opacity-0 max-sm:hidden transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                  [attr.aria-label]="'Add record on ' + day.iso" (click)="openAdd(day.iso)">
-                  <svg lucidePlus size="14"></svg>
-                </button>
-              </div>
-              <div class="mt-1 flex h-1.5 justify-center gap-0.5 sm:hidden" aria-hidden="true">
-                @if (day.holidays.length && showHolidays()) {
-                  <span class="size-1.5 rounded-full bg-holiday"></span>
-                }
-                @for (r of day.records.slice(0, day.holidays.length && showHolidays() ? 2 : 3); track r.id) {
-                  <span class="size-1.5 rounded-full" [class]="meta(r.category).dotClass"></span>
-                }
-              </div>
-              <ul class="mt-1 space-y-0.5 max-sm:hidden">
-                @if (showHolidays()) {
-                  @for (h of day.holidays; track h.date + h.name) {
+        @if (loading()) {
+          <ui-skeleton class="m-3 h-80 sm:m-4 sm:h-96" />
+        } @else {
+          <div class="grid grid-cols-7">
+            @for (day of days(); track day.iso) {
+              <div class="group relative min-h-14 border-r border-b border-border p-1 last:border-r-0 sm:min-h-28 sm:p-1.5"
+                [class]="dayCellClass(day)">
+                <button type="button" class="absolute inset-0 z-10 sm:hidden"
+                  [attr.aria-label]="dayAriaLabel(day)"
+                  [attr.aria-pressed]="day.iso === selected()"
+                  (click)="selectDay(day.iso)"></button>
+                <div class="flex items-center justify-center sm:justify-between">
+                  <span class="flex size-6 items-center justify-center rounded-full text-xs"
+                    [class]="dayNumberClass(day)">
+                    {{ day.date.getDate() }}
+                  </span>
+                  <button type="button" class="rounded p-0.5 text-muted opacity-0 max-sm:hidden transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    [attr.aria-label]="'Add record on ' + day.iso" (click)="openAdd(day.iso)">
+                    <svg lucidePlus size="14"></svg>
+                  </button>
+                </div>
+                <div class="mt-1 flex h-1.5 justify-center gap-0.5 sm:hidden" aria-hidden="true">
+                  @if (day.holidays.length && showHolidays()) {
+                    <span class="size-1.5 rounded-full bg-holiday"></span>
+                  }
+                  @for (r of day.records.slice(0, day.holidays.length && showHolidays() ? 2 : 3); track r.id) {
+                    <span class="size-1.5 rounded-full" [class]="meta(r.category).dotClass"></span>
+                  }
+                </div>
+                <ul class="mt-1 space-y-0.5 max-sm:hidden">
+                  @if (showHolidays()) {
+                    @for (h of day.holidays; track h.date + h.name) {
+                      <li>
+                        <span
+                          class="flex w-full items-center truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight font-medium text-holiday bg-holiday/15 sm:text-xs"
+                          [attr.title]="h.name"
+                        >
+                          <span class="truncate">{{ h.name }}</span>
+                        </span>
+                      </li>
+                    }
+                  }
+                  @for (r of day.records; track r.id) {
                     <li>
-                      <span
-                        class="flex w-full items-center truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight font-medium text-holiday bg-holiday/15 sm:text-xs"
-                        [attr.title]="h.name"
-                      >
-                        <span class="truncate">{{ h.name }}</span>
-                      </span>
+                      <button type="button"
+                        class="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight font-medium sm:text-xs"
+                        [class]="meta(r.category).softBgClass + ' ' + meta(r.category).textClass"
+                        [attr.title]="r.title + ' · ' + (r.duration ?? 'Needs review')"
+                        (click)="openEdit(r)">
+                        <span class="truncate">{{ meta(r.category).short }}</span>
+                        @if (r.duration === 'Half Day') { <span class="ml-auto shrink-0" aria-label="Half day">½</span> }
+                        @if (r.status === 'needs_review') { <span class="ml-auto shrink-0" aria-label="Needs review">!</span> }
+                      </button>
                     </li>
                   }
-                }
-                @for (r of day.records; track r.id) {
-                  <li>
-                    <button type="button"
-                      class="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight font-medium sm:text-xs"
-                      [class]="meta(r.category).softBgClass + ' ' + meta(r.category).textClass"
-                      [attr.title]="r.title + ' · ' + (r.duration ?? 'Needs review')"
-                      (click)="openEdit(r)">
-                      <span class="truncate">{{ meta(r.category).short }}</span>
-                      @if (r.duration === 'Half Day') { <span class="ml-auto shrink-0" aria-label="Half day">½</span> }
-                      @if (r.status === 'needs_review') { <span class="ml-auto shrink-0" aria-label="Needs review">!</span> }
-                    </button>
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-        </div>
-      }
+                </ul>
+              </div>
+            }
+          </div>
+        }
+      </div>
     </ui-card>
+
+    <div class="mt-3 sm:hidden">
+      <ui-coach-tip
+        tipId="calendar-day-add"
+        [when]="showDayAddTip()"
+        message="Tap Add below to log leave for this day."
+      />
+    </div>
 
     <ui-card class="mt-3 sm:hidden" [title]="selectedLabel()" description="Selected day">
       <button cardActions uiButton size="sm" (click)="openAdd(selected())"><svg lucidePlus size="14"></svg> Add</button>
@@ -174,6 +198,7 @@ type CalendarFilter = '' | LeaveCategory | 'holiday';
 export class CalendarPage {
   private readonly store = inject(LeaveRecordsStore);
   private readonly prefs = inject(CategoryPreferencesService);
+  private readonly coach = inject(CoachTipsService);
 
   protected readonly categories = this.prefs.enabledCategories;
   protected readonly weekdays = WEEKDAYS_MON_FIRST;
@@ -186,6 +211,8 @@ export class CalendarPage {
   protected readonly filter = signal<CalendarFilter>('');
 
   protected readonly selected = signal(todayIso());
+  /** After first mobile day tap — gate for the Add coach tip. */
+  protected readonly showDayAddTip = signal(false);
 
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<LeaveRecord | null>(null);
@@ -292,8 +319,20 @@ export class CalendarPage {
     return bits.join(', ');
   }
 
-  protected shift(delta: number): void {
+  protected shift(delta: -1 | 1 | number): void {
     this.month.update((m) => addMonths(m, delta));
+  }
+
+  protected onMonthSwipe(delta: -1 | 1): void {
+    this.shift(delta);
+    this.coach.dismiss('calendar-swipe');
+  }
+
+  protected selectDay(iso: string): void {
+    this.selected.set(iso);
+    if (this.coach.isVisible('calendar-day-add')) {
+      this.showDayAddTip.set(true);
+    }
   }
 
   protected goToday(): void {
@@ -304,6 +343,8 @@ export class CalendarPage {
     this.editing.set(null);
     this.defaultDate.set(date);
     this.dialogOpen.set(true);
+    this.coach.dismiss('calendar-day-add');
+    this.showDayAddTip.set(false);
   }
 
   protected openEdit(record: LeaveRecord): void {
