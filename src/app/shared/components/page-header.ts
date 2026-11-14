@@ -4,8 +4,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'app-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
+    // relative + z-index so header menus (Export, etc.) paint above page cards
+    // that use glass-panel isolation stacking contexts.
     class:
-      'mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4',
+      'relative z-20 mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4',
   },
   template: `
     <div class="motion-rise min-w-0">
@@ -20,7 +22,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       }
     </div>
     <div
-      class="motion-rise motion-delay-1 flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end [&>button]:max-sm:flex-1 [&>a]:max-sm:flex-1"
+      class="motion-rise motion-delay-1 relative z-20 flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end [&>button]:max-sm:flex-1 [&>a]:max-sm:flex-1"
     >
       <ng-content />
     </div>

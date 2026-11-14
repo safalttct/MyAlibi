@@ -68,7 +68,6 @@ const passwordMatch = (group: AbstractControl): ValidationErrors | null => {
         <section class="w-full max-w-sm">
           <div class="mb-8 flex flex-col items-center gap-3 text-center">
             <app-logo class="[&_img]:mx-auto [&_img]:object-center" size="xl" />
-            <h1 class="font-display text-2xl font-semibold tracking-tight text-foreground">MyAlibi</h1>
             <p class="text-sm text-muted">Your personal leave &amp; WFH tracker</p>
           </div>
 

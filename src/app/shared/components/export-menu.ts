@@ -19,7 +19,10 @@ export type ExportMenuFormat = 'csv' | 'pdf';
   selector: 'app-export-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [UiButton, LucideDownload, LucideFileText, LucideChevronDown],
-  host: { class: 'relative inline-flex' },
+  host: {
+    '[class]':
+      "'relative inline-flex ' + (open() ? 'z-50' : 'z-auto')",
+  },
   template: `
     <button
       uiButton
@@ -39,7 +42,7 @@ export type ExportMenuFormat = 'csv' | 'pdf';
     @if (open()) {
       <div
         role="menu"
-        class="absolute top-full right-0 z-30 mt-1 min-w-40 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-md"
+        class="absolute top-full right-0 z-50 mt-1 min-w-40 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-md"
         (click)="$event.stopPropagation()"
         (keydown)="onMenuKey($event)"
       >

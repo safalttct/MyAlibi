@@ -197,13 +197,8 @@ import { UiCard } from '../../shared/ui/ui-card';
         </p>
       </ui-card>
     </div>
-
-    <p class="about-rise about-rise-delay-3 text-center text-xs text-muted">
-      &copy; {{ year }} MyAlibi · Developed for Tamimah Team
-    </p>
   `,
 })
 export class AboutPage {
   protected readonly version = environment.version || '0.0.0';
-  protected readonly year = new Date().getFullYear();
 }
